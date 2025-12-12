@@ -65,12 +65,12 @@ export default function Home() {
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-4xl mx-auto">
             {/* Header */}
-            <div className="text-center mb-12 space-y-4">
-              <h1 className="text-6xl md:text-7xl font-mc-title mb-2 text-minecraft-title tracking-wider pt-4">
+            <div className="text-center mb-12 space-y-1">
+              <h1 className="text-6xl md:text-7xl font-mc-title mb-0 text-minecraft-title tracking-wider pt-4">
                 Hmmify
               </h1>
-              <p className="text-minecraft-splash text-xl font-mc-subheading pt-2">
-                Turn any YouTube video into hilarious Minecraft villager singing!
+              <p className="text-minecraft-splash text-xl font-mc-subheading pt-0">
+                Turn any YT vid into villageroke!
               </p>
             </div>
 
