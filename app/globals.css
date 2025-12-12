@@ -76,6 +76,11 @@
 }
 
 @layer utilities {
+  @keyframes splash-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+
   .text-minecraft-title {
     color: #cecece; /* Base light gray */
     text-shadow: 
@@ -126,5 +131,14 @@
       4px 10px 4px rgba(0,0,0,0.4);
     
     letter-spacing: 2px;
+  }
+
+  .text-minecraft-splash {
+    color: #FFFF55; /* Minecraft splash yellow */
+    text-shadow: 
+      2px 2px 0px #3F3F3F; /* Sharp dark shadow offset to bottom-right */
+    font-weight: normal;
+    animation: splash-pulse 2s ease-in-out infinite;
+    display: inline-block;
   }
 }

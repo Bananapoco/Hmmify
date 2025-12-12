@@ -69,7 +69,7 @@ export default function Home() {
               <h1 className="text-6xl md:text-7xl font-mc-title mb-2 text-minecraft-title tracking-wider pt-4">
                 Hmmify
               </h1>
-              <p className="text-muted-foreground text-xl font-mc-subheading pt-2">
+              <p className="text-minecraft-splash text-xl font-mc-subheading pt-2">
                 Turn any YouTube video into hilarious Minecraft villager singing!
               </p>
             </div>
