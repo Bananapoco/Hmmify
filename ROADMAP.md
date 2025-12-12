@@ -1,3 +1,4 @@
+
 # 🎵 Minecraft Villager Singing Generator - Roadmap
 
 ## Project Overview
@@ -6,8 +7,35 @@ A web app that converts YouTube videos into hilarious Minecraft villager singing
 ## Tech Stack
 - **Frontend**: Next.js 14+ (App Router), TypeScript, Tailwind CSS, ShadCN UI
 - **Backend**: Next.js API Routes
-- **Audio Processing**: Python backend service (or Node.js alternatives)
-- **Voice Conversion**: RVC (Retrieval-based Voice Conversion) or similar
+- **Audio Processing**: Replicate API for ML models
+- **Vocal Separation**: Replicate - Demucs by ryan5453
+- **Voice Conversion**: Replicate - rvc-v2 by psuedoram
+
+---
+
+## Replicate API Setup (Required)
+
+### Quick Setup
+1. **Create Replicate Account**: https://replicate.com/signup
+2. **Get API Token**: https://replicate.com/account/api-tokens
+3. **Install SDK**: `npm install replicate`
+4. **Add to `.env.local`**:
+   ```bash
+   REPLICATE_API_TOKEN=your_token_here
+   ```
+
+### Cost Estimates (for Prototype)
+- **Demucs (vocal separation)**: ~$0.035 per run
+- **RVC-v2 (voice conversion)**: Check current pricing on Replicate
+- **Total per video**: Likely under $0.10 per conversion 
+
+### Why Replicate?
+- **No ML infrastructure needed** - No GPU, no Python setup
+- **Pay-per-use** - Only pay for what you process
+- **Easy integration** - Simple API calls from Next.js
+- **Scalable** - Handles load automatically
+- **Perfect for prototypes** - Low barrier to entry
+
 
 ---
 
@@ -19,31 +47,10 @@ A web app that converts YouTube videos into hilarious Minecraft villager singing
 
 ---
 
-## Phase 2: Frontend UI Development
-
-### 2.1 Basic Layout
-- [ ] Create main page with:
-  - YouTube URL input field (ShadCN Input component)
-  - Submit button
-  - Loading state indicator
-  - Villager display area (canvas or div with sprite animations)
-  - Audio player for result
-
-### 2.2 Dancing Villager Component
-- [ ] Create villager sprite/character (CSS animations or canvas)
-- [ ] Implement random dance move cycle:
-  - Idle animation
-  - Dance move 1 (bobbing)
-  - Dance move 2 (spinning)
-  - Dance move 3 (jumping)
-  - Dance move 4 (wiggling)
-- [ ] Randomly cycle through moves during playback
-
-### 2.3 State Management
-- [ ] Handle form submission
-- [ ] Manage loading states
-- [ ] Handle error states
-- [ ] Store and play generated audio
+## Phase 2: Frontend UI Development ✅
+- [x] Create main page with YouTube URL input, submit button, loading states
+- [x] Implement dancing villager component with random dance moves
+- [x] Add audio player and state management
 
 ---
 
@@ -55,11 +62,6 @@ A web app that converts YouTube videos into hilarious Minecraft villager singing
 - Convert to WAV/MP3 format
 - Store temporarily
 
-**Option B: Python Service**
-- Use `yt-dlp` (better maintained than youtube-dl)
-- Extract audio as MP3/WAV
-- Expose via API endpoint
-
 **API Route**: `/api/extract-audio`
 ```typescript
 POST /api/extract-audio
@@ -67,45 +69,31 @@ Body: { youtubeUrl: string }
 Returns: { audioUrl: string, duration: number }
 ```
 
-### 3.2 Audio Separation (Optional but Recommended)
-**Why**: Better results if we separate vocals from instrumental
-- Use **Spleeter** (Python) or **demucs** (better quality)
-- Or use API service like **LALAL.AI API** or **VocalRemover.org API**
-- Extract vocals only
+### 3.2 Audio Separation (Recommended)
+**Why**: Better results if we separate vocals from instrumental before voice conversion
 
-**API Route**: `/api/separate-vocals`
+**Using Replicate - Demucs by ryan5453**
+- **Model**: `ryan5453/demucs` on Replicate
+- **Cost**: ~$0.035 per run (see cost estimates above)
+- **API Route**: `/api/separate-vocals`
 ```typescript
 POST /api/separate-vocals
-Body: { audioFile: File }
+Body: { audioFile: File | audioUrl: string }
 Returns: { vocalsUrl: string }
 ```
 
-**Alternative**: Skip separation if using RVC models that handle mixed audio well
-
 ### 3.3 Voice Conversion to Villager Sounds
-**The Magic Part**: Converting vocals to villager grunts
+**The Magic Part**: This is where I abducted villagers in boats for unpaid labor... I mean science
 
-**Option A: RVC (Retrieval-based Voice Conversion)**
-- Train or use pre-trained RVC model with villager sounds
-- Requires Python backend service
-- Best quality but more complex
-
-**Option B: Real-Time Voice Changer (RVC) via API**
-- Use existing RVC service/API
-- Or run RVC model in Docker container
-
-**Option C: Audio Processing + Sound Library**
-- Map audio frequencies to villager sound library
-- Use Web Audio API or similar
-- Simpler but less accurate
-
-**API Route**: `/api/convert-to-villager`
+**Using Replicate - rvc-v2 by psuedoram**
+- **Model**: `psuedoram/rvc-v2` on Replicate
+- **Requires**: Pre-trained villager RVC model file
+- **API Route**: `/api/convert-to-villager`
 ```typescript
 POST /api/convert-to-villager
-Body: { audioFile: File }
+Body: { audioFile: File | audioUrl: string, modelPath?: string }
 Returns: { villagerAudioUrl: string }
 ```
-
 ---
 
 ## Phase 4: Integration & Polish
@@ -138,9 +126,9 @@ Returns: { villagerAudioUrl: string }
 ## Phase 5: Deployment Considerations
 
 ### 5.1 Backend Services
-- **Option A**: Deploy Python service separately (Railway, Render, etc.)
-- **Option B**: Use serverless functions (Vercel, but limited for heavy ML)
-- **Option C**: Use external APIs for heavy processing
+- **Deployment**: Deploy Next.js app to Vercel (perfect for serverless)
+- **ML Processing**: All handled by Replicate API (no infrastructure needed)
+- **Cost Management**: Monitor usage in Replicate dashboard
 
 ### 5.2 Storage
 - Temporary file storage (S3, Cloudinary, or local temp files)
@@ -160,15 +148,10 @@ Returns: { villagerAudioUrl: string }
 - **ffmpeg** - Audio conversion/manipulation
 - **fluent-ffmpeg** - Node.js wrapper for ffmpeg
 
-### Voice Conversion
-- **RVC (Retrieval-based Voice Conversion)** - GitHub: RVC-Project
-- **so-vits-svc** - Alternative voice conversion model
-- **Coqui TTS** - Text-to-speech (if needed)
-
-### Audio Separation
-- **Spleeter** - Audio source separation (Python)
-- **demucs** - Better quality separation (Python)
-- **LALAL.AI API** - Commercial API option
+### Voice Conversion & Audio Separation
+- **Replicate SDK**: `npm install replicate` (covers both models)
+- **Demucs**: `ryan5453/demucs` - https://replicate.com/ryan5453/demucs
+- **RVC-v2**: `psuedoram/rvc-v2` - https://replicate.com/psuedoram/rvc-v2
 
 ### Frontend Audio
 - **Howler.js** - Audio playback library
@@ -179,51 +162,42 @@ Returns: { villagerAudioUrl: string }
 ## Quick Start Implementation Order
 
 1. ✅ **Set up Next.js project** (Done)
-2. **Create basic UI** with input field and villager display
-3. **Implement YouTube audio extraction** (start simple)
-4. **Add dancing villager animation**
-5. **Research and implement voice conversion** (this is the hardest part)
-6. **Add audio separation** (if needed for better results)
-7. **Polish and deploy**
+2. ✅ **Create basic UI** with input field and villager display (Done)
+3. ✅ **Add dancing villager animation** (Done)
+4. **Set up Replicate API** (see setup section above)
+5. **Implement YouTube audio extraction** (ytdl-core)
+6. **Implement Demucs vocal separation** via Replicate
+7. **Obtain/train villager RVC model** (key challenge!)
+8. **Implement RVC voice conversion** via Replicate
+9. **Chain pipeline together** in `/api/process-video`
+10. **Polish and deploy**
 
 ---
 
 ## Notes & Considerations
 
+### Replicate API Considerations
+- **Processing**: Async jobs - handle polling for completion
+- **Rate Limits**: Check Replicate docs for current limits
+- **File Size**: Be aware of upload size limits
+- **Error Handling**: Implement retry logic for failed jobs
+
 ### Voice Conversion Challenge
-The hardest part is converting vocals to villager sounds. You have a few approaches:
+The main challenge is obtaining a villager RVC model:
 
-1. **Pre-trained RVC Model**: Train an RVC model on Minecraft villager sounds
-   - Collect villager sound samples
-   - Train model to convert any voice to villager
-   - Requires ML knowledge but best results
+1. **Train Your Own Model** (Best results):
+   - Collect Minecraft villager sound samples
+   - Use RVC training tools to create model
+   - Upload model to Replicate or host elsewhere
+   - Use model path in Replicate API calls
 
-2. **Audio Mapping**: Map audio frequencies to villager sound library
-   - Extract pitch/rhythm from vocals
-   - Map to closest matching villager sounds
-   - Simpler but less accurate
+2. **Use Pre-trained Model** (If available):
+   - Search for existing villager RVC models
+   - May need to adapt to Replicate format
+   - Could start with generic voice model and adapt
 
-3. **Use Existing Service**: Find if someone already built this
-   - Check GitHub for villager voice conversion projects
-   - Use their API or code
-
-### Audio Separation
-- **Not always necessary** - RVC models can work with mixed audio
-- **Better quality** - Separating vocals first usually gives cleaner results
-- **Start without it** - Add later if needed
-
-### Villager Sounds
-- Extract from Minecraft game files
-- Or use online villager sound libraries
-- Need variety for different pitches/emotions
-
----
-
-## Next Steps
-1. Start with basic UI and YouTube extraction
-2. Research RVC implementation options
-3. Build MVP without separation first
-4. Iterate based on results
-
-Good luck! This is going to be hilarious! 🎉
+3. **Alternative Approach** (If RVC model unavailable):
+   - Use Replicate's RVC-v2 with closest available voice model
+   - Post-process audio to add villager-like characteristics
+   - Combine with villager sound library for final effect
 

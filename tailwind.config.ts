@@ -9,6 +9,12 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["var(--font-inter)", "sans-serif"],
+        "mc-title": ["var(--font-mc-title)", "sans-serif"],
+        "mc-heading": ["var(--font-mc-heading)", "sans-serif"],
+        "mc-subheading": ["var(--font-mc-subheading)", "sans-serif"],
+      },
       colors: {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
@@ -50,6 +56,14 @@ const config: Config = {
           "4": "hsl(var(--chart-4))",
           "5": "hsl(var(--chart-5))",
         },
+        // Minecraft-inspired greens
+        mc: {
+          green: "#5CB85C",
+          darkGreen: "#3D8E3D",
+          lightGreen: "#8ED68E",
+          dirt: "#8B4513",
+          stone: "#7D7D7D",
+        }
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -61,4 +75,3 @@ const config: Config = {
   plugins: [],
 };
 export default config;
-

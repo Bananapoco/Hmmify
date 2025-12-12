@@ -34,7 +34,7 @@ export default function Home() {
     setAudioUrl(null);
 
     try {
-      // TODO: Call API endpoint to process video
+      // Call API endpoint to process video
       const response = await fetch("/api/process-video", {
         method: "POST",
         headers: {
@@ -59,105 +59,113 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 dark:from-gray-900 dark:via-emerald-900 dark:to-teal-900">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-              🎵 Villager Singing Generator
-            </h1>
-            <p className="text-muted-foreground text-lg">
-              Turn any YouTube video into hilarious Minecraft villager singing!
-            </p>
-          </div>
+    <main className="min-h-screen bg-[url('/dirt-texture.png')] bg-repeat bg-[#f0f0f0]">
+      {/* Texture overlay via CSS if image missing, essentially just a light noise or grid */}
+      <div className="min-h-screen bg-background/95 relative">
+        <div className="container mx-auto px-4 py-12">
+          <div className="max-w-4xl mx-auto">
+            {/* Header */}
+            <div className="text-center mb-12 space-y-4">
+              <h1 className="text-6xl md:text-7xl font-mc-title mb-2 text-minecraft-title tracking-wider pt-4">
+                Hmmify
+              </h1>
+              <p className="text-muted-foreground text-xl font-mc-subheading pt-2">
+                Turn any YouTube video into hilarious Minecraft villager singing!
+              </p>
+            </div>
 
-          {/* Main Card */}
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>Enter YouTube URL</CardTitle>
-              <CardDescription>
-                Paste a link to any YouTube video and watch the magic happen
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="flex gap-2">
-                  <Input
-                    type="url"
-                    placeholder="https://www.youtube.com/watch?v=..."
-                    value={youtubeUrl}
-                    onChange={(e) => setYoutubeUrl(e.target.value)}
-                    disabled={isProcessing}
-                    className="flex-1"
-                  />
-                  <Button type="submit" disabled={isProcessing}>
-                    {isProcessing ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <Music className="mr-2 h-4 w-4" />
-                        Convert
-                      </>
-                    )}
-                  </Button>
-                </div>
-                {error && (
-                  <p className="text-sm text-destructive">{error}</p>
-                )}
-              </form>
-            </CardContent>
-          </Card>
-
-          {/* Villager Display Area */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex flex-col items-center justify-center min-h-[400px]">
-                {isProcessing ? (
-                  <div className="text-center">
-                    <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-emerald-600" />
-                    <p className="text-muted-foreground">
-                      Extracting audio... Converting to villager sounds...
-                    </p>
+            {/* Main Card */}
+            <Card className="mb-8 border-4 border-border/50">
+              <CardHeader className="bg-secondary/10">
+                <CardDescription className="text-lg mt-0 text-center font-mc-subheading text-muted-foreground/80">
+                  Paste a link to any YouTube video and watch the magic happen
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-8">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="flex gap-4 flex-col sm:flex-row">
+                    <Input
+                      type="url"
+                      placeholder="https://www.youtube.com/watch?v=..."
+                      value={youtubeUrl}
+                      onChange={(e) => setYoutubeUrl(e.target.value)}
+                      disabled={isProcessing}
+                      className="flex-1 text-lg h-14"
+                    />
+                    <Button type="submit" disabled={isProcessing} size="lg" className="text-lg">
+                      {isProcessing ? (
+                        <>
+                          <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Music className="mr-2 h-6 w-6" />
+                          Convert
+                        </>
+                      )}
+                    </Button>
                   </div>
-                ) : (
-                  <>
-                    <VillagerDancer isPlaying={isPlaying} className="mb-8" />
-                    {audioUrl && (
-                      <div className="w-full max-w-md">
-                        <audio
-                          controls
-                          src={audioUrl}
-                          className="w-full"
-                          onPlay={() => setIsPlaying(true)}
-                          onPause={() => setIsPlaying(false)}
-                          onEnded={() => setIsPlaying(false)}
-                        />
-                      </div>
-                    )}
-                    {!audioUrl && !isProcessing && (
-                      <p className="text-muted-foreground text-center">
-                        Enter a YouTube URL above to get started!
-                      </p>
-                    )}
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                  {error && (
+                    <div className="bg-destructive/10 border-2 border-destructive text-destructive p-4 font-mc-subheading text-sm">
+                      ⚠️ {error}
+                    </div>
+                  )}
+                </form>
+              </CardContent>
+            </Card>
 
-          {/* Info Section */}
-          <div className="mt-8 text-center text-sm text-muted-foreground">
-            <p>
-              Made with ❤️ for laughs. Processing may take a minute or two.
-            </p>
+            {/* Villager Display Area */}
+            <Card className="border-4 border-border/50">
+              <CardContent className="pt-12 pb-12">
+                <div className="flex flex-col items-center justify-center min-h-[400px]">
+                  {isProcessing ? (
+                    <div className="text-center space-y-4">
+                      <div className="w-24 h-24 mx-auto bg-secondary/30 flex items-center justify-center border-4 border-border animate-pulse">
+                         <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                      </div>
+                      <p className="text-muted-foreground font-mc-subheading text-lg">
+                        Extracting audio... <br/>Converting to villager sounds...
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mb-8">
+                         <VillagerDancer isPlaying={isPlaying} className="scale-125" />
+                      </div>
+                      
+                      {audioUrl && (
+                        <div className="w-full max-w-md p-4 bg-card border-2 border-border shadow-[4px_4px_0_rgba(0,0,0,0.05)]">
+                          <audio
+                            controls
+                            src={audioUrl}
+                            className="w-full"
+                            onPlay={() => setIsPlaying(true)}
+                            onPause={() => setIsPlaying(false)}
+                            onEnded={() => setIsPlaying(false)}
+                          />
+                        </div>
+                      )}
+                      {!audioUrl && !isProcessing && (
+                        <p className="text-muted-foreground text-center font-mc-subheading opacity-50">
+                          Waiting for input...
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Info Section */}
+            <div className="mt-12 text-center text-sm text-muted-foreground font-mc-subheading opacity-60">
+              <p>
+                Made with ❤️ for laughs. Processing may take a minute or two.
+              </p>
+            </div>
           </div>
         </div>
       </div>
     </main>
   );
 }
-
