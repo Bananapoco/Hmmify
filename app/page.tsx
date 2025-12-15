@@ -76,8 +76,8 @@ export default function Home() {
   }, []);
 
   const nextMemeSlide = useCallback(() => {
-    // 1. Start fade out
-    setFadeState('out');
+      // 1. Start fade out
+      setFadeState('out');
 
     // 2. Change image after fade out
     slideshowTimerRef.current = setTimeout(() => {
@@ -286,7 +286,7 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-cover bg-center bg-fixed" style={{ backgroundImage: "url('/images/free-minecraft-sky-background-edit-online-1.jpg')" }}>
+    <main className="min-h-screen bg-cover bg-center bg-fixed" style={{ backgroundImage: "url('/images/background_edited.png')" }}>
       <div className="min-h-screen bg-background/40 relative">
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-4xl mx-auto">

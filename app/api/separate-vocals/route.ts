@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     try {
         await fs.access(filePath);
     } catch {
-        return NextResponse.json({ error: "File not found on server" }, { status: 404 });
+      return NextResponse.json({ error: "File not found on server" }, { status: 404 });
     }
 
     console.log(`Sending ${filename} to Replicate for vocal separation...`);

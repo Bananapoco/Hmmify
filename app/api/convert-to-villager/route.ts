@@ -53,11 +53,11 @@ export async function POST(request: NextRequest) {
         const filePath = path.join(process.cwd(), "public", "temp", localFilename);
         try {
             const buffer = await fs.readFile(filePath);
-            const base64 = buffer.toString('base64');
+                const base64 = buffer.toString('base64');
             const ext = path.extname(localFilename).toLowerCase();
-            const mime = ext === '.mp3' ? 'audio/mpeg' : 'audio/wav'; 
-            inputAudio = `data:${mime};base64,${base64}`;
-            console.log("Converted local audio to Data URI for Replicate");
+                const mime = ext === '.mp3' ? 'audio/mpeg' : 'audio/wav'; 
+                inputAudio = `data:${mime};base64,${base64}`;
+                console.log("Converted local audio to Data URI for Replicate");
         } catch (err) {
             console.error("Error reading local file:", err);
             return NextResponse.json({ error: "Local audio file not found" }, { status: 404 });
