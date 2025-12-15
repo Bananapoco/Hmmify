@@ -117,8 +117,8 @@ export default function Home() {
         setError("Invalid file type (use MP3/WAV)");
         return;
       }
-      if (file.size > 4.5 * 1024 * 1024) {
-        setError("File too large (>4.5MB)");
+      if (file.size > 3 * 1024 * 1024) {
+        setError("File too large (>3MB for cloud processing)");
         return;
       }
       setSelectedFile(file);

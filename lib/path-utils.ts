@@ -17,3 +17,4 @@ export function getTempDir() {
   // Let's use os.tmpdir() to rule out environment differences.
   return os.tmpdir();
 }
+
