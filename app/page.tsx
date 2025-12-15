@@ -286,7 +286,12 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-cover bg-center bg-fixed" style={{ backgroundImage: "url('/images/background_edited.png')" }}>
+    <main 
+      className="min-h-screen bg-[url('/images/background_edited.png')] animate-scroll-background bg-repeat-x"
+      style={{
+        backgroundSize: "auto 100%"
+      }}
+    >
       <div className="min-h-screen bg-background/40 relative">
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-4xl mx-auto">
@@ -466,12 +471,6 @@ export default function Home() {
               </CardContent>
             </Card>
 
-            {/* Info Section */}
-            <div className="mt-12 text-center text-sm text-muted-foreground font-mc-subheading opacity-60">
-              <p>
-                Powered by Replicate AI
-              </p>
-            </div>
           </div>
         </div>
       </div>

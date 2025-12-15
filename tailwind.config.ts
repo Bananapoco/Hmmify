@@ -63,12 +63,22 @@ const config: Config = {
           lightGreen: "#8ED68E",
           dirt: "#8B4513",
           stone: "#7D7D7D",
+          stoneLight: "#A0A0A0",
         }
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      keyframes: {
+        "scroll-background": {
+          "0%": { backgroundPosition: "0 0" },
+          "100%": { backgroundPosition: "100vw 0" }, // Positive VW moves image RIGHT
+        },
+      },
+      animation: {
+        "scroll-background": "scroll-background 110s linear infinite",
       },
     },
   },
