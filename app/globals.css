@@ -101,6 +101,18 @@
       100% { transform: scaleX(1); }
   }
 
+  /* Faster Bounce Animation */
+  @keyframes fast-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-25%); }
+  }
+
+  /* Continuous Circle Spin */
+  @keyframes spin-circle {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
   .animate-rock {
     animation: rock-motion 1s ease-in-out infinite;
   }
@@ -111,6 +123,14 @@
 
   .animate-rapid-flip {
       animation: rapid-flip 0.2s steps(1, end) infinite;
+  }
+
+  .animate-fast-bounce {
+      animation: fast-bounce 0.4s ease-in-out infinite;
+  }
+
+  .animate-spin-circle {
+      animation: spin-circle 1s linear infinite;
   }
 
   .text-minecraft-title {

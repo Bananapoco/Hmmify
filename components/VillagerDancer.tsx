@@ -5,9 +5,9 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 
 // Updated dance moves based on user request
-type DanceMove = "bounce" | "squash_stretch" | "spin_360" | "rock" | "gravity_flip";
+type DanceMove = "bounce" | "squash_stretch" | "spin_360" | "rock" | "gravity_flip" | "spin_circle";
 
-const danceMoves: DanceMove[] = ["bounce", "squash_stretch", "spin_360", "rock", "gravity_flip"];
+const danceMoves: DanceMove[] = ["bounce", "squash_stretch", "spin_360", "rock", "gravity_flip", "spin_circle"];
 
 interface VillagerDancerProps {
   isPlaying?: boolean;
@@ -34,6 +34,8 @@ export function VillagerDancer({ isPlaying = false, hasMic = false, className }:
   // Dancing Logic
   useEffect(() => {
     if (!isPlaying) {
+      // When not playing, ensure we're not animating
+      setCurrentMove("bounce"); // Reset to default, but won't animate since isPlaying is false
       return;
     }
 
@@ -47,19 +49,25 @@ export function VillagerDancer({ isPlaying = false, hasMic = false, className }:
     setIsFacingRight(false);
     setHopState(false);
 
+    // Immediately set a random move when playing starts (no delay)
     const changeMove = () => {
       const randomMove = danceMoves[Math.floor(Math.random() * danceMoves.length)];
       setCurrentMove(randomMove);
     };
 
-    // Change moves every 2-4 seconds (Randomly)
+    // Set initial move immediately
+    changeMove();
+
+    // Change moves every 2-3 seconds (Randomly, max 3 seconds)
     // We clear the previous interval and set a new timeout to keep it chaotic
     let timeoutId: NodeJS.Timeout;
     
     const loop = () => {
-        changeMove();
-        const nextTime = 2000 + Math.random() * 2000;
-        timeoutId = setTimeout(loop, nextTime);
+        const nextTime = 2000 + Math.random() * 1000; // 2-3 seconds max
+        timeoutId = setTimeout(() => {
+            changeMove();
+            loop(); // Continue the loop
+        }, nextTime);
     };
     
     loop();
@@ -135,11 +143,15 @@ export function VillagerDancer({ isPlaying = false, hasMic = false, className }:
     <div className={cn("relative flex items-center justify-center w-full h-full", className)}>
       <div
         className={cn(
-          "relative transition-all ease-linear",
+          "relative",
+          // Only apply transition when NOT playing (for wandering), not during animations
+          !isPlaying && "transition-transform ease-linear",
           // Tailwind / Custom animations applied to OUTER wrapper
-          isPlaying && currentMove === "bounce" && "animate-bounce",
+          isPlaying && currentMove === "bounce" && "animate-fast-bounce", // Faster bounce
           isPlaying && currentMove === "spin_360" && "animate-spin",
-          isPlaying && currentMove === "squash_stretch" && "animate-squash" // Extreme squash
+          isPlaying && currentMove === "spin_circle" && "animate-spin-circle", // Continuous circle spin
+          isPlaying && currentMove === "squash_stretch" && "animate-squash", // Extreme squash
+          isPlaying && currentMove === "rock" && "animate-rock" // Rock animation
         )}
         style={{
           // Main wrapper handles X position & Rotation based moves
@@ -147,13 +159,7 @@ export function VillagerDancer({ isPlaying = false, hasMic = false, className }:
             translateX(${isPlaying || hasMic ? 0 : positionX}%) 
             ${isPlaying && currentMove === "gravity_flip" ? "rotate(180deg)" : ""}
           `,
-          transitionDuration: isPlaying ? "0.3s" : `${moveDuration}ms`,
-          
-          // Rock animation is handled via class 'animate-rock' on INNER or OUTER?
-          // Let's put rock on INNER to separate it from spins if needed, 
-          // or just put it here if not spinning.
-          // Since rock is a rotation wiggle, let's add it to class list above if possible or style
-          ...(isPlaying && currentMove === "rock" ? { animation: "rock-motion 0.6s ease-in-out infinite" } : {})
+          transitionDuration: !isPlaying ? `${moveDuration}ms` : undefined, // No transition when playing/animating
         }}
       >
          {/* Inner wrapper handles Y-axis hopping independently + FLIPPING */}
