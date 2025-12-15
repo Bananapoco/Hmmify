@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { VillagerDancer } from "@/components/VillagerDancer";
-import { Loader2, Music, Upload, Wand2 } from "lucide-react";
+import { Loader2, Music, Upload, Wand2, RefreshCcw } from "lucide-react";
 
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -14,6 +14,9 @@ export default function Home() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+  
+  // New state for vocal separation toggle
+  const [separateVocals, setSeparateVocals] = useState(true);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -59,25 +62,45 @@ export default function Home() {
       }
 
       const uploadData = await uploadResponse.json();
+      let processingUrl = uploadData.audioUrl; // Default to uploaded file
       
-      // 2. Separate Vocals (Replicate)
-      setStatusMessage("Separating vocals using AI (this may take a moment)...");
-      
-      const separateResponse = await fetch("/api/separate-vocals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename: uploadData.filename }),
-      });
+      // 2. Separate Vocals (Optional)
+      if (separateVocals) {
+        setStatusMessage("Phase 1: Extracting vocals (AI Separation)...");
+        
+        const separateResponse = await fetch("/api/separate-vocals", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ filename: uploadData.filename }),
+        });
 
-      if (!separateResponse.ok) {
-        const errData = await separateResponse.json();
-        throw new Error(errData.error || "Failed to separate vocals");
+        if (!separateResponse.ok) {
+            const errData = await separateResponse.json();
+            throw new Error(errData.error || "Failed to separate vocals");
+        }
+
+        const separateData = await separateResponse.json();
+        processingUrl = separateData.vocalsUrl; // Use vocals for next step
       }
 
-      const separateData = await separateResponse.json();
+      // 3. Convert to Villager (RVC)
+      setStatusMessage("Phase 2: Villager-ifying (RVC Model)...");
+
+      const convertResponse = await fetch("/api/convert-to-villager", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audioUrl: processingUrl }),
+      });
+
+      if (!convertResponse.ok) {
+        const errData = await convertResponse.json();
+        throw new Error(errData.error || "Failed to convert to villager voice");
+      }
+
+      const convertData = await convertResponse.json();
       
-      // 3. Play Vocals
-      setAudioUrl(separateData.vocalsUrl);
+      // 4. Play Final Result
+      setAudioUrl(convertData.villagerUrl);
       setIsPlaying(true);
       setStatusMessage("");
 
@@ -108,13 +131,13 @@ export default function Home() {
             <Card className="mb-8 border-4 border-border/50">
               <CardHeader className="bg-secondary/10">
                 <CardDescription className="text-lg mt-0 text-center font-mc-subheading text-muted-foreground/80">
-                  Upload an MP3 or WAV file to extract vocals & convert them
+                  Upload an MP3 or WAV file. We'll extract the vocals and turn them into "Hmmms"!
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-8">
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="flex gap-4 flex-col sm:flex-row items-start">
-                    <div className="flex-1 w-full">
+                    <div className="flex-1 w-full space-y-4">
                         <div className="relative flex items-center justify-center w-full h-32 border-2 border-dashed border-border/50 bg-secondary/5 hover:bg-secondary/10 transition-colors cursor-pointer group rounded-lg overflow-hidden">
                             <Input
                                 type="file"
@@ -141,18 +164,38 @@ export default function Home() {
                                 )}
                             </div>
                         </div>
+
+                        {/* Vocal Separation Toggle */}
+                        <div className="flex items-center space-x-2 bg-secondary/10 p-3 rounded-lg border-2 border-border/20">
+                            <input
+                                type="checkbox"
+                                id="separate-vocals"
+                                checked={separateVocals}
+                                onChange={(e) => setSeparateVocals(e.target.checked)}
+                                disabled={isProcessing}
+                                className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
+                            />
+                            <label htmlFor="separate-vocals" className="text-sm font-mc-subheading cursor-pointer select-none flex-1">
+                                Separate Vocals (Recommended for songs)
+                                <span className="block text-xs text-muted-foreground font-sans mt-0.5">
+                                    Uncheck for acapellas or to save API costs.
+                                </span>
+                            </label>
+                        </div>
                     </div>
                     
                     <Button type="submit" disabled={isProcessing || !selectedFile} size="lg" className="text-lg h-32 w-full sm:w-auto px-8">
                       {isProcessing ? (
                         <div className="flex flex-col items-center">
                           <Loader2 className="h-6 w-6 animate-spin mb-2" />
-                          <span className="text-xs text-center">{statusMessage || "Processing..."}</span>
+                          <span className="text-xs text-center max-w-[100px] leading-tight">
+                            {statusMessage || "Processing..."}
+                          </span>
                         </div>
                       ) : (
                         <div className="flex flex-col items-center">
                           <Wand2 className="h-6 w-6 mb-2" />
-                          <span>Magic!</span>
+                          <span>Villager-ify</span>
                         </div>
                       )}
                     </Button>
@@ -187,8 +230,8 @@ export default function Home() {
                       
                       {audioUrl && (
                         <div className="w-full max-w-md p-4 bg-card border-2 border-border shadow-[4px_4px_0_rgba(0,0,0,0.05)]">
-                          <p className="text-xs text-center mb-2 text-muted-foreground font-mc-subheading">
-                            Vocals Only (Demucs Output)
+                          <p className="text-xs text-center mb-2 text-primary font-mc-subheading">
+                            ✨ Villager Mode Activated ✨
                           </p>
                           <audio
                             controls
