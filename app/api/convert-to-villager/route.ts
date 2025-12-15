@@ -7,6 +7,7 @@ import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import { getCache, setCache } from "@/lib/cache";
 import crypto from "crypto";
+import { getTempDir } from "@/lib/path-utils";
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,7 +51,8 @@ export async function POST(request: NextRequest) {
     let inputAudio = audioUrl;
 
     if (localFilename) {
-        const filePath = path.join(process.cwd(), "public", "temp", localFilename);
+        const tempDir = getTempDir();
+        const filePath = path.join(tempDir, localFilename);
         try {
             const buffer = await fs.readFile(filePath);
                 const base64 = buffer.toString('base64');
@@ -85,44 +87,35 @@ export async function POST(request: NextRequest) {
 
     console.log("Replicate RVC output received.");
 
-    const tempDir = path.join(process.cwd(), "public", "temp");
-    // Ensure temp dir exists
-    try {
-        await fs.access(tempDir);
-    } catch {
-        await fs.mkdir(tempDir, { recursive: true });
-    }
-
-    const timestamp = Date.now();
-    const villagerFilename = `villager-${timestamp}.wav`;
-    const villagerPath = path.join(tempDir, villagerFilename);
+    let villagerUrl = "";
 
     if (typeof output === 'string') {
-        const response = await fetch(output);
-        if (!response.ok) throw new Error("Failed to fetch villager audio from Replicate URL");
-        
-        // Stream download to file
-        if (response.body) {
-             // @ts-ignore
-            const nodeStream = Readable.fromWeb(response.body);
-            await pipeline(nodeStream, createWriteStream(villagerPath));
-        } else {
-            throw new Error("No body in Replicate response");
-        }
+        // It's a URL (typical Replicate behavior)
+        // Return it directly!
+        villagerUrl = output;
+        console.log("Returning Replicate URL directly:", villagerUrl);
     } else {
+        // It's a stream? Save to disk (fallback)
+        const tempDir = getTempDir();
+        // Ensure temp dir exists
+        try { await fs.access(tempDir); } catch { await fs.mkdir(tempDir, { recursive: true }); }
+
+        const timestamp = Date.now();
+        const villagerFilename = `villager-${timestamp}.wav`;
+        const villagerPath = path.join(tempDir, villagerFilename);
+        
         // @ts-ignore
         const nodeStream = Readable.fromWeb(output);
         await pipeline(nodeStream, createWriteStream(villagerPath));
+        console.log(`Villager audio saved to ${villagerPath}`);
+        villagerUrl = `/api/audio?file=${villagerFilename}`;
     }
 
-    console.log(`Villager audio saved to ${villagerPath}`);
-
-    const villagerUrl = `/api/audio?file=${villagerFilename}`;
     const result = { villagerUrl };
 
     // Save to Cache
     if (cacheKey) {
-        await setCache(cacheKey, result, [villagerFilename]);
+        await setCache(cacheKey, result, []);
     }
 
     return NextResponse.json({ 

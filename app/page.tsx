@@ -117,8 +117,8 @@ export default function Home() {
         setError("Invalid file type (use MP3/WAV)");
         return;
       }
-      if (file.size > 10 * 1024 * 1024) {
-        setError("File too large (>10MB)");
+      if (file.size > 4.5 * 1024 * 1024) {
+        setError("File too large (>4.5MB)");
         return;
       }
       setSelectedFile(file);
@@ -139,27 +139,36 @@ export default function Home() {
     startMemeSlideshow();
 
     try {
-      const formData = new FormData();
-      formData.append("audio", selectedFile);
-
-      setTargetProgress(30); 
-      setStatusMessage("Uploading...");
-      const uploadResponse = await fetch("/api/upload-audio", { method: "POST", body: formData });
-      if (!uploadResponse.ok) throw new Error("Upload failed");
+      // Step 1: Read file as Base64 to bypass Vercel ephemeral storage issues
+      setStatusMessage("Preparing audio...");
       
-      const uploadData = await uploadResponse.json();
-      let processingUrl = uploadData.audioUrl; 
+      const toBase64 = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = error => reject(error);
+        });
+      };
+
+      const fileData = await toBase64(selectedFile);
+
+      let processingUrl = "";
       let instrumentalUrl: string | { type: string; stems: string[] } | null = null;
       
-      setProgress((prev) => Math.max(prev, 30));
+      setProgress((prev) => Math.max(prev, 10));
 
       if (separateVocals) {
         setTargetProgress(60); 
         setStatusMessage("Extracting vocals...");
+        // Pass fileData directly to avoid relying on upload-audio persistence
         const separateResponse = await fetch("/api/separate-vocals", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ filename: uploadData.filename }),
+            body: JSON.stringify({ 
+                filename: selectedFile.name, // Used for cache key/metadata
+                fileData: fileData 
+            }),
         });
         if (!separateResponse.ok) throw new Error("Separation failed");
         
@@ -173,6 +182,16 @@ export default function Home() {
            instrumentalUrl = separateData.instrumentalUrl;
         }
         setProgress((prev) => Math.max(prev, 60));
+      } else {
+          setTargetProgress(30); 
+          setStatusMessage("Uploading...");
+          const formData = new FormData();
+          formData.append("audio", selectedFile);
+          const uploadResponse = await fetch("/api/upload-audio", { method: "POST", body: formData });
+          if (!uploadResponse.ok) throw new Error("Upload failed");
+          const uploadData = await uploadResponse.json();
+          processingUrl = uploadData.audioUrl;
+          setProgress((prev) => Math.max(prev, 30));
       }
       
       setTargetProgress(90); 
@@ -180,12 +199,12 @@ export default function Home() {
       const convertResponse = await fetch("/api/convert-to-villager", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ audioUrl: processingUrl }),
+        body: JSON.stringify({ audioUrl: processingUrl }), // processingUrl is now a Replicate URL (remote)
       });
       if (!convertResponse.ok) throw new Error("Conversion failed");
       
       const convertData = await convertResponse.json();
-      const villagerVocalsUrl = convertData.villagerUrl;
+      const villagerVocalsUrl = convertData.villagerUrl; // Replicate URL
       setProgress((prev) => Math.max(prev, 90));
 
       if (separateVocals && instrumentalUrl) {

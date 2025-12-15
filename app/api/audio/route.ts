@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { getTempDir } from "@/lib/path-utils";
 
-// Handles serving audio files securely from public/temp
+// Handles serving audio files securely from temp dir
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const filename = searchParams.get("file");
@@ -13,7 +14,8 @@ export async function GET(request: NextRequest) {
 
   // Security check: ensure no directory traversal
   const cleanFilename = path.basename(filename);
-  const filePath = path.join(process.cwd(), "public", "temp", cleanFilename);
+  const tempDir = getTempDir();
+  const filePath = path.join(tempDir, cleanFilename);
 
   if (!fs.existsSync(filePath)) {
     return NextResponse.json({ error: "File not found" }, { status: 404 });
@@ -38,11 +40,3 @@ export async function GET(request: NextRequest) {
     },
   });
 }
-
-
-
-
-
-
-
-

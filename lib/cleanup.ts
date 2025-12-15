@@ -1,11 +1,13 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { getTempDir } from './path-utils';
 
-const TEMP_DIR = path.join(process.cwd(), 'public', 'temp');
 const MAX_AGE_MS = 60 * 60 * 1000; // 1 hour
 
 export async function cleanupTempFiles() {
   try {
+    const TEMP_DIR = getTempDir();
+    
     // Check if directory exists
     try {
       await fs.access(TEMP_DIR);
@@ -35,4 +37,3 @@ export async function cleanupTempFiles() {
     console.error('Error during temp file cleanup:', error);
   }
 }
-

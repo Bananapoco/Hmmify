@@ -4,8 +4,10 @@ import path from "path";
 import crypto from "crypto";
 import { cleanupTempFiles } from "@/lib/cleanup";
 import { getCache, setCache } from "@/lib/cache";
+import { getTempDir } from "@/lib/path-utils";
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+// Vercel Serverless Function Limit is 4.5MB for body size
+const MAX_FILE_SIZE = 4.5 * 1024 * 1024; 
 const ALLOWED_TYPES = ['audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/x-m4a', 'audio/webm'];
 
 export async function POST(request: NextRequest) {
@@ -26,7 +28,7 @@ export async function POST(request: NextRequest) {
     // Server-side validation
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { error: "File size too large (max 10MB)" },
+        { error: "File size too large (max 4.5MB for Vercel)" },
         { status: 400 }
       );
     }
@@ -58,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     console.log(`Receiving upload: ${file.name} (${file.size} bytes)`);
 
-    const tempDir = path.join(process.cwd(), "public", "temp");
+    const tempDir = getTempDir();
     
     // Ensure directory exists
     try {
