@@ -5,19 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { VillagerDancer } from "@/components/VillagerDancer";
-import { Loader2, Music, Upload } from "lucide-react";
+import { Loader2, Music, Upload, Wand2 } from "lucide-react";
 
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      // Basic validation
       if (!file.type.startsWith("audio/")) {
         setError("Please select a valid audio file (MP3, WAV, etc.)");
         return;
@@ -42,27 +42,48 @@ export default function Home() {
     setIsProcessing(true);
     setError(null);
     setAudioUrl(null);
+    setStatusMessage("Uploading audio...");
 
     try {
       const formData = new FormData();
       formData.append("audio", selectedFile);
 
-      // Call API endpoint to upload audio
-      const response = await fetch("/api/upload-audio", {
+      // 1. Upload Audio
+      const uploadResponse = await fetch("/api/upload-audio", {
         method: "POST",
         body: formData,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to upload audio");
+      if (!uploadResponse.ok) {
+        throw new Error("Failed to upload audio");
       }
 
-      const data = await response.json();
-      setAudioUrl(data.audioUrl);
+      const uploadData = await uploadResponse.json();
+      
+      // 2. Separate Vocals (Replicate)
+      setStatusMessage("Separating vocals using AI (this may take a moment)...");
+      
+      const separateResponse = await fetch("/api/separate-vocals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: uploadData.filename }),
+      });
+
+      if (!separateResponse.ok) {
+        const errData = await separateResponse.json();
+        throw new Error(errData.error || "Failed to separate vocals");
+      }
+
+      const separateData = await separateResponse.json();
+      
+      // 3. Play Vocals
+      setAudioUrl(separateData.vocalsUrl);
       setIsPlaying(true);
+      setStatusMessage("");
+
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
+      setStatusMessage("");
     } finally {
       setIsProcessing(false);
     }
@@ -87,7 +108,7 @@ export default function Home() {
             <Card className="mb-8 border-4 border-border/50">
               <CardHeader className="bg-secondary/10">
                 <CardDescription className="text-lg mt-0 text-center font-mc-subheading text-muted-foreground/80">
-                  Upload an MP3 or WAV file to convert into villager sounds
+                  Upload an MP3 or WAV file to extract vocals & convert them
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-8">
@@ -126,12 +147,12 @@ export default function Home() {
                       {isProcessing ? (
                         <div className="flex flex-col items-center">
                           <Loader2 className="h-6 w-6 animate-spin mb-2" />
-                          <span>Processing...</span>
+                          <span className="text-xs text-center">{statusMessage || "Processing..."}</span>
                         </div>
                       ) : (
                         <div className="flex flex-col items-center">
-                          <Music className="h-6 w-6 mb-2" />
-                          <span>Convert</span>
+                          <Wand2 className="h-6 w-6 mb-2" />
+                          <span>Magic!</span>
                         </div>
                       )}
                     </Button>
@@ -154,8 +175,8 @@ export default function Home() {
                       <div className="w-24 h-24 mx-auto bg-secondary/30 flex items-center justify-center border-4 border-border animate-pulse">
                          <Loader2 className="h-12 w-12 animate-spin text-primary" />
                       </div>
-                      <p className="text-muted-foreground font-mc-subheading text-lg">
-                        Processing audio... <br/>Converting to villager sounds...
+                      <p className="text-muted-foreground font-mc-subheading text-lg max-w-md mx-auto">
+                        {statusMessage || "Processing..."}
                       </p>
                     </div>
                   ) : (
@@ -166,6 +187,9 @@ export default function Home() {
                       
                       {audioUrl && (
                         <div className="w-full max-w-md p-4 bg-card border-2 border-border shadow-[4px_4px_0_rgba(0,0,0,0.05)]">
+                          <p className="text-xs text-center mb-2 text-muted-foreground font-mc-subheading">
+                            Vocals Only (Demucs Output)
+                          </p>
                           <audio
                             controls
                             src={audioUrl}
@@ -178,7 +202,7 @@ export default function Home() {
                       )}
                       {!audioUrl && !isProcessing && (
                         <p className="text-muted-foreground text-center font-mc-subheading opacity-50">
-                          Waiting for input...
+                          Waiting for your mixtape...
                         </p>
                       )}
                     </>
@@ -190,7 +214,7 @@ export default function Home() {
             {/* Info Section */}
             <div className="mt-12 text-center text-sm text-muted-foreground font-mc-subheading opacity-60">
               <p>
-                Made with ❤️ for laughs.
+                Powered by Replicate AI
               </p>
             </div>
           </div>

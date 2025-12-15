@@ -11,10 +11,12 @@
   "dependencies": {
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "esm": "^3.2.25",
     "lucide-react": "^0.400.0",
     "next": "^14.2.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
+    "replicate": "^1.4.0",
     "tailwind-merge": "^2.5.0"
   },
   "devDependencies": {
@@ -25,5 +27,23 @@
     "postcss": "^8.4.0",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.5.0"
-  }
+  },
+  "description": "A hilarious web app that converts YouTube videos into Minecraft villager singing videos with dancing animations!",
+  "main": "next.config.js",
+  "module": "main.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Bananapoco/Hmmify.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Bananapoco/Hmmify/issues"
+  },
+  "homepage": "https://github.com/Bananapoco/Hmmify#readme"
 }
