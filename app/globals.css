@@ -134,9 +134,9 @@
   }
 
   .text-minecraft-splash {
-    color: #AAAAAA; /* Light gray */
+    color: #FFFF00; /* Yellow */
     text-shadow: 
-      2px 2px 0px #3F3F3F; /* Dark gray shadow offset to bottom-right */
+      2px 2px 0px #8B6914; /* Darker yellow shadow offset to bottom-right */
     font-weight: normal;
     animation: splash-pulse 2s ease-in-out infinite;
     display: inline-block;

@@ -288,16 +288,23 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-[url('/dirt-texture.png')] bg-repeat bg-[#f0f0f0]">
-      <div className="min-h-screen bg-background/95 relative">
+    <main className="min-h-screen bg-cover bg-center bg-fixed" style={{ backgroundImage: "url('/images/free-minecraft-sky-background-edit-online-1.jpg')" }}>
+      <div className="min-h-screen bg-background/40 relative">
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-4xl mx-auto">
             {/* Header */}
             <div className="text-center mb-12 space-y-1">
-              <h1 className="text-6xl md:text-7xl font-mc-title mb-0 text-minecraft-title tracking-wider pt-4">
-                Hmmify
-              </h1>
-              <p className="text-minecraft-splash text-xl font-mc-subheading pt-0">
+              <div className="flex justify-center pt-4 mb-0">
+                <Image 
+                  src="/images/title.png" 
+                  alt="Hmmify" 
+                  width={420}
+                  height={140}
+                  className="max-w-full h-auto"
+                  priority
+                />
+              </div>
+              <p className="text-[#FFFF00] text-xl font-mc-subheading pt-0 text-minecraft-splash">
                 Turn any audio into villageroke!
               </p>
             </div>
