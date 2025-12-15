@@ -34,5 +34,77 @@
     "files": [
       "villager-1765823414802.wav"
     ]
+  },
+  "upload:4b6b96330e6c0c9c266b3b303b1deb42": {
+    "timestamp": 1765823667065,
+    "data": "upload-4b6b96330e6c0c9c266b3b303b1deb42-trololol.wav",
+    "files": [
+      "upload-4b6b96330e6c0c9c266b3b303b1deb42-trololol.wav"
+    ]
+  },
+  "separate:upload-4b6b96330e6c0c9c266b3b303b1deb42-trololol.wav": {
+    "timestamp": 1765823757798,
+    "data": {
+      "vocalsUrl": "/api/audio?file=vocals-1765823756204-upload-4b6b96330e6c0c9c266b3b303b1deb42-trololol.wav",
+      "instrumentalUrl": {
+        "type": "multi",
+        "stems": [
+          "/api/audio?file=drums-1765823756204-upload-4b6b96330e6c0c9c266b3b303b1deb42-trololol.wav",
+          "/api/audio?file=bass-1765823756204-upload-4b6b96330e6c0c9c266b3b303b1deb42-trololol.wav",
+          "/api/audio?file=other-1765823756204-upload-4b6b96330e6c0c9c266b3b303b1deb42-trololol.wav"
+        ]
+      }
+    },
+    "files": [
+      "vocals-1765823756204-upload-4b6b96330e6c0c9c266b3b303b1deb42-trololol.wav",
+      "drums-1765823756204-upload-4b6b96330e6c0c9c266b3b303b1deb42-trololol.wav",
+      "other-1765823756204-upload-4b6b96330e6c0c9c266b3b303b1deb42-trololol.wav",
+      "bass-1765823756204-upload-4b6b96330e6c0c9c266b3b303b1deb42-trololol.wav"
+    ]
+  },
+  "convert:vocals-1765823756204-upload-4b6b96330e6c0c9c266b3b303b1deb42-trololol.wav": {
+    "timestamp": 1765823786811,
+    "data": {
+      "villagerUrl": "/api/audio?file=villager-1765823785884.wav"
+    },
+    "files": [
+      "villager-1765823785884.wav"
+    ]
+  },
+  "upload:bca6f96e70ab3ac8582a007d84ee8e9c": {
+    "timestamp": 1765824527285,
+    "data": "upload-bca6f96e70ab3ac8582a007d84ee8e9c-loseyourself.mp3",
+    "files": [
+      "upload-bca6f96e70ab3ac8582a007d84ee8e9c-loseyourself.mp3"
+    ]
+  },
+  "separate:upload-bca6f96e70ab3ac8582a007d84ee8e9c-loseyourself.mp3": {
+    "timestamp": 1765824537295,
+    "data": {
+      "vocalsUrl": "/api/audio?file=vocals-1765824536593-upload-bca6f96e70ab3ac8582a007d84ee8e9c-loseyourself.wav",
+      "instrumentalUrl": {
+        "type": "multi",
+        "stems": [
+          "/api/audio?file=drums-1765824536593-upload-bca6f96e70ab3ac8582a007d84ee8e9c-loseyourself.wav",
+          "/api/audio?file=bass-1765824536593-upload-bca6f96e70ab3ac8582a007d84ee8e9c-loseyourself.wav",
+          "/api/audio?file=other-1765824536593-upload-bca6f96e70ab3ac8582a007d84ee8e9c-loseyourself.wav"
+        ]
+      }
+    },
+    "files": [
+      "vocals-1765824536593-upload-bca6f96e70ab3ac8582a007d84ee8e9c-loseyourself.wav",
+      "drums-1765824536593-upload-bca6f96e70ab3ac8582a007d84ee8e9c-loseyourself.wav",
+      "bass-1765824536593-upload-bca6f96e70ab3ac8582a007d84ee8e9c-loseyourself.wav",
+      "other-1765824536593-upload-bca6f96e70ab3ac8582a007d84ee8e9c-loseyourself.wav"
+    ]
+  },
+  "convert:vocals-1765824536593-upload-bca6f96e70ab3ac8582a007d84ee8e9c-loseyourself.wav": {
+    "timestamp": 1765824547997,
+    "data": {
+      "villagerUrl": "/api/audio?file=villager-1765824547345.wav"
+    },
+    "files": [
+      "villager-1765824547345.wav"
+    ]
   }
 }

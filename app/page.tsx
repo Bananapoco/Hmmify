@@ -319,7 +319,10 @@ export default function Home() {
             <div className="lg:col-span-8 bg-[#101010] relative min-h-[400px] flex flex-col">
                 
                 {/* Visualizer Area */}
-                <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-[url('/images/free-minecraft-sky-background-edit-online-1.jpg')] bg-cover bg-bottom">
+                <div 
+                    className="flex-1 relative flex items-center justify-center overflow-hidden bg-[url('/images/village_background.webp')] bg-bottom"
+                    style={{ backgroundSize: "150% auto", backgroundPosition: "center bottom" }}
+                >
                     <div className="absolute inset-0 bg-black/20" />
                     
                     {/* Progress Overlay */}
