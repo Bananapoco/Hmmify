@@ -3,10 +3,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { VillagerDancer } from "@/components/VillagerDancer";
-import { Loader2, Music, Upload, Wand2, RefreshCcw } from "lucide-react";
+import { Loader2, Music, Upload, Wand2, Play, Pause, Mic2 } from "lucide-react";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -15,42 +16,35 @@ export default function Home() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
-  
-  // New state for vocal separation toggle
   const [separateVocals, setSeparateVocals] = useState(true);
 
-  // Meme Loading State
+  // Meme & Animation State
   const [memeImages, setMemeImages] = useState<string[]>([]);
   const [currentMeme, setCurrentMeme] = useState<string | null>(null);
   const [fadeState, setFadeState] = useState<'in' | 'out'>('in');
-  
-  // Progress State
   const [progress, setProgress] = useState(0);
   const [targetProgress, setTargetProgress] = useState(0);
   
-  // Refs for slideshow management
   const slideshowTimerRef = useRef<NodeJS.Timeout | null>(null);
   const shuffledMemesRef = useRef<string[]>([]);
   const memeIndexRef = useRef(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Smooth progress animation
   useEffect(() => {
     if (!isProcessing || progress >= targetProgress) return;
-
     const interval = setInterval(() => {
         setProgress((prev) => {
             const diff = targetProgress - prev;
-            if (diff <= 0.5) return targetProgress; // Snap to target if close
-            // Decelerate as we get closer
+            if (diff <= 0.5) return targetProgress;
             const step = Math.max(0.5, diff * 0.1); 
             return Math.min(prev + step, targetProgress);
         });
-    }, 100); // 10fps is sufficient for progress bar
-
+    }, 100);
     return () => clearInterval(interval);
   }, [isProcessing, targetProgress, progress]);
 
-  // Fetch memes on mount
+  // Fetch memes
   useEffect(() => {
     const fetchMemes = async () => {
       try {
@@ -76,49 +70,32 @@ export default function Home() {
   }, []);
 
   const nextMemeSlide = useCallback(() => {
-      // 1. Start fade out
-      setFadeState('out');
-
-    // 2. Change image after fade out
+    setFadeState('out');
     slideshowTimerRef.current = setTimeout(() => {
         let nextIndex = memeIndexRef.current + 1;
-        
-        // If we reached the end, reshuffle and start over
         if (nextIndex >= shuffledMemesRef.current.length) {
             const lastMeme = shuffledMemesRef.current[shuffledMemesRef.current.length - 1];
             let newShuffle = shuffleArray(memeImages);
-            
-            // Avoid immediate repeat
             if (memeImages.length > 1 && newShuffle[0] === lastMeme) {
                 [newShuffle[0], newShuffle[1]] = [newShuffle[1], newShuffle[0]];
             }
-            
             shuffledMemesRef.current = newShuffle;
             nextIndex = 0;
         }
-
         memeIndexRef.current = nextIndex;
         setCurrentMeme(shuffledMemesRef.current[nextIndex]);
-        
-        // 3. Start fade in
         setFadeState('in');
-
-        // Schedule next slide
         slideshowTimerRef.current = setTimeout(nextMemeSlide, 5000);
-    }, 500); // Wait for fade out
+    }, 500);
   }, [memeImages, shuffleArray]);
 
   const startMemeSlideshow = useCallback(() => {
     if (memeImages.length === 0) return;
     if (slideshowTimerRef.current) clearTimeout(slideshowTimerRef.current);
-
     shuffledMemesRef.current = shuffleArray(memeImages);
     memeIndexRef.current = 0;
-    
     setCurrentMeme(shuffledMemesRef.current[0]);
     setFadeState('in');
-
-    // Start loop
     slideshowTimerRef.current = setTimeout(nextMemeSlide, 5000);
   }, [memeImages, nextMemeSlide, shuffleArray]);
 
@@ -129,7 +106,6 @@ export default function Home() {
     }
   }, []);
 
-  // Clean up timer on unmount
   useEffect(() => {
     return () => stopMemeSlideshow();
   }, [stopMemeSlideshow]);
@@ -138,11 +114,11 @@ export default function Home() {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       if (!file.type.startsWith("audio/")) {
-        setError("Please select a valid audio file (MP3, WAV, etc.)");
+        setError("Invalid file type (use MP3/WAV)");
         return;
       }
-      if (file.size > 10 * 1024 * 1024) { // 10MB limit
-        setError("File size too large (max 10MB)");
+      if (file.size > 10 * 1024 * 1024) {
+        setError("File too large (>10MB)");
         return;
       }
       setSelectedFile(file);
@@ -152,326 +128,281 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!selectedFile) {
-      setError("Please select an audio file first");
-      return;
-    }
+    if (!selectedFile) return setError("Select an audio file first");
 
     setIsProcessing(true);
     setError(null);
     setAudioUrl(null);
-    setStatusMessage("Calculating hmmms...");
+    setStatusMessage("Initializing...");
     setProgress(0);
     setTargetProgress(0);
-    
     startMemeSlideshow();
 
     try {
       const formData = new FormData();
       formData.append("audio", selectedFile);
 
-      // 1. Upload Audio
       setTargetProgress(30); 
-      setStatusMessage("Uploading audio...");
-      const uploadResponse = await fetch("/api/upload-audio", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!uploadResponse.ok) {
-        const errData = await uploadResponse.json().catch(() => ({}));
-        throw new Error(errData.error || "Failed to upload audio");
-      }
-
-      // Ensure we hit at least 30% after upload finishes
-      setProgress((prev) => Math.max(prev, 30));
-
+      setStatusMessage("Uploading...");
+      const uploadResponse = await fetch("/api/upload-audio", { method: "POST", body: formData });
+      if (!uploadResponse.ok) throw new Error("Upload failed");
+      
       const uploadData = await uploadResponse.json();
       let processingUrl = uploadData.audioUrl; 
       let instrumentalUrl: string | { type: string; stems: string[] } | null = null;
       
-      // 2. Separate Vocals (Optional)
+      setProgress((prev) => Math.max(prev, 30));
+
       if (separateVocals) {
         setTargetProgress(60); 
-        setStatusMessage("Phase 1: Extracting vocals (AI Separation)...");
-        
+        setStatusMessage("Extracting vocals...");
         const separateResponse = await fetch("/api/separate-vocals", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ filename: uploadData.filename }),
         });
-
-        if (!separateResponse.ok) {
-            const errData = await separateResponse.json().catch(() => ({}));
-            throw new Error(errData.error || "Failed to separate vocals");
-        }
-
+        if (!separateResponse.ok) throw new Error("Separation failed");
+        
         const separateData = await separateResponse.json();
         processingUrl = separateData.vocalsUrl; 
         
         if (typeof separateData.instrumentalUrl === 'string') {
-          try {
-            const parsed = JSON.parse(separateData.instrumentalUrl);
-            instrumentalUrl = parsed;
-          } catch {
-            instrumentalUrl = separateData.instrumentalUrl;
-          }
+           try { instrumentalUrl = JSON.parse(separateData.instrumentalUrl); } 
+           catch { instrumentalUrl = separateData.instrumentalUrl; }
         } else {
-          instrumentalUrl = separateData.instrumentalUrl;
+           instrumentalUrl = separateData.instrumentalUrl;
         }
-
-        setProgress((prev) => Math.max(prev, 60));
-      } else {
         setProgress((prev) => Math.max(prev, 60));
       }
       
-      // 3. Convert to Villager (RVC)
       setTargetProgress(90); 
-      setStatusMessage("Phase 2: Villager-ifying (RVC Model)...");
-
+      setStatusMessage("Villager-ifying...");
       const convertResponse = await fetch("/api/convert-to-villager", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ audioUrl: processingUrl }),
       });
-
-      if (!convertResponse.ok) {
-        const errData = await convertResponse.json().catch(() => ({}));
-        throw new Error(errData.error || "Failed to convert to villager voice");
-      }
-
+      if (!convertResponse.ok) throw new Error("Conversion failed");
+      
       const convertData = await convertResponse.json();
       const villagerVocalsUrl = convertData.villagerUrl;
-      
       setProgress((prev) => Math.max(prev, 90));
 
-      // 4. Combine villager vocals with instrumental
       if (separateVocals && instrumentalUrl) {
         setTargetProgress(98);
-        setStatusMessage("Phase 3: Mixing villager vocals with instrumental...");
-        
+        setStatusMessage("Mixing...");
         const combineResponse = await fetch("/api/combine-audio", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            vocalsUrl: villagerVocalsUrl,
-            instrumentalUrl: instrumentalUrl
-          }),
+          body: JSON.stringify({ vocalsUrl: villagerVocalsUrl, instrumentalUrl }),
         });
-
-        if (!combineResponse.ok) {
-          const errData = await combineResponse.json().catch(() => ({}));
-          throw new Error(errData.error || "Failed to combine audio");
-        }
-
-        const combineData = await combineResponse.json();
-        setAudioUrl(combineData.combinedUrl);
+        if (!combineResponse.ok) throw new Error("Mixing failed");
+        setAudioUrl((await combineResponse.json()).combinedUrl);
       } else {
         setAudioUrl(villagerVocalsUrl);
       }
       
       setTargetProgress(100);
       setProgress(100);
-      setIsPlaying(true);
       setStatusMessage("Done!");
-
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
-      setStatusMessage("");
     } finally {
       setIsProcessing(false);
       stopMemeSlideshow();
     }
   };
 
+  const togglePlayback = () => {
+    if (audioRef.current) {
+      if (isPlaying) audioRef.current.pause();
+      else audioRef.current.play();
+      setIsPlaying(!isPlaying);
+    }
+  };
+
   return (
     <main 
-      className="min-h-screen bg-[url('/images/background_edited.png')] animate-scroll-background bg-repeat-x"
-      style={{
-        backgroundSize: "auto 100%"
-      }}
+      className="min-h-screen bg-[url('/images/background_edited.png')] animate-scroll-background bg-repeat-x flex items-center justify-center p-4 md:p-8"
+      style={{ backgroundSize: "auto 100%" }}
     >
-      <div className="min-h-screen bg-background/40 relative">
-        <div className="container mx-auto px-4 py-12">
-          <div className="max-w-4xl mx-auto">
-            {/* Header */}
-            <div className="text-center mb-12 space-y-1">
-              <div className="flex justify-center pt-4 mb-0">
-                <Image 
-                  src="/images/title.png" 
-                  alt="Hmmify" 
-                  width={420}
-                  height={140}
-                  className="max-w-full h-auto"
-                  priority
-                />
-              </div>
-              <p className="text-[#FFFF00] text-xl font-mc-subheading pt-0 text-minecraft-splash">
-                Turn any audio into villageroke!
-              </p>
+      <div className="w-full max-w-5xl bg-[#1e1e1e]/90 border-4 border-[#5d5d5d] shadow-[0_0_0_4px_#00000040] rounded-lg overflow-hidden backdrop-blur-sm">
+        
+        {/* Header Bar */}
+        <div className="bg-[#313131] p-4 border-b-4 border-[#1e1e1e] flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+                 <Image src="/images/title.png" alt="Hmmify" width={180} height={60} className="object-contain" />
+                 <span className="hidden md:inline text-[#7a7a7a] font-mc-subheading text-lg">|</span>
+                 <p className="text-[#FFFF00] font-mc-subheading text-sm text-minecraft-splash hidden md:block">
+                    Turn audio into villageroke!
+                 </p>
+            </div>
+            {/* Status Indicator */}
+            <div className="flex items-center gap-2 bg-[#1e1e1e] px-4 py-2 rounded border-2 border-[#5d5d5d]">
+                {isProcessing ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-mc-green" />
+                ) : (
+                    <div className={`h-3 w-3 rounded-full ${audioUrl ? 'bg-mc-green animate-pulse' : 'bg-gray-500'}`} />
+                )}
+                <span className="text-xs font-mc-subheading text-[#a0a0a0] uppercase tracking-wider">
+                    {isProcessing ? statusMessage : audioUrl ? "Ready to Play" : "Idle"}
+                </span>
+            </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
+            
+            {/* Left Column: Controls (4/12) */}
+            <div className="lg:col-span-4 bg-[#c6c6c6] p-6 flex flex-col gap-6 border-b-4 lg:border-b-0 lg:border-r-4 border-[#1e1e1e]">
+                
+                {/* File Upload */}
+                <div className="bg-[#8b8b8b] p-1 border-2 border-b-white border-r-white border-t-[#373737] border-l-[#373737]">
+                    <div className="bg-[#c6c6c6] p-4 border-2 border-[#373737] relative group cursor-pointer hover:bg-[#dcdcdc] transition-colors">
+                        <Input
+                            type="file"
+                            accept="audio/*"
+                            onChange={handleFileChange}
+                            disabled={isProcessing}
+                            className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer"
+                        />
+                        <div className="flex flex-col items-center gap-2 text-[#373737]">
+                             {selectedFile ? (
+                                <Music className="w-8 h-8 text-[#373737]" />
+                             ) : (
+                                <Upload className="w-8 h-8 opacity-50" />
+                             )}
+                             <p className="font-mc-subheading text-xs text-center truncate w-full px-2">
+                                {selectedFile ? selectedFile.name : "Click to Upload Audio"}
+                             </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Settings */}
+                <div className="space-y-3">
+                    <label className="flex items-center gap-3 p-3 bg-[#8b8b8b] border-2 border-[#373737] cursor-pointer hover:bg-[#969696] transition-colors select-none">
+                        <input
+                            type="checkbox"
+                            checked={separateVocals}
+                            onChange={(e) => setSeparateVocals(e.target.checked)}
+                            disabled={isProcessing}
+                            className="w-5 h-5 rounded-none border-2 border-[#373737] bg-[#c6c6c6] checked:bg-mc-green focus:ring-0 text-mc-green"
+                        />
+                        <div className="flex flex-col">
+                            <span className="font-mc-subheading text-sm text-[#1e1e1e]">Separate Vocals</span>
+                            <span className="text-[10px] text-[#373737]">Recommended for songs</span>
+                        </div>
+                    </label>
+                </div>
+
+                {/* Action Button */}
+                <Button 
+                    onClick={handleSubmit}
+                    disabled={isProcessing || !selectedFile} 
+                    className={cn(
+                        "w-full h-14 text-lg font-mc-heading tracking-wide border-b-4 border-black/30 active:border-b-0 active:translate-y-1 transition-all",
+                        isProcessing ? "bg-[#5d5d5d] text-[#a0a0a0]" : "bg-mc-green hover:bg-mc-darkGreen text-white shadow-[inset_0_2px_0_rgba(255,255,255,0.3)]"
+                    )}
+                >
+                    {isProcessing ? "Cooking..." : "Villager-ify!"}
+                </Button>
+
+                {/* Error Box */}
+                {error && (
+                    <div className="bg-[#ff5555]/20 border-2 border-[#ff5555] p-3 text-[#ff5555] text-xs font-mc-subheading text-center">
+                        {error}
+                    </div>
+                )}
             </div>
 
-            {/* Main Card */}
-            <Card className="mb-8 border-4 border-border/50">
-              <CardHeader className="bg-secondary/10">
-                <CardDescription className="text-lg mt-0 text-center font-mc-subheading text-muted-foreground/80">
-                  Upload an MP3 or WAV file. We'll extract the vocals and turn them into "Hmmms"!
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-8">
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="flex gap-4 flex-col sm:flex-row items-start">
-                    <div className="flex-1 w-full space-y-4">
-                        <div className="relative flex items-center justify-center w-full h-32 border-2 border-dashed border-border/50 bg-secondary/5 hover:bg-secondary/10 transition-colors cursor-pointer group rounded-lg overflow-hidden">
-                            <Input
-                                type="file"
-                                accept="audio/*"
-                                onChange={handleFileChange}
-                                disabled={isProcessing}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                            />
-                            <div className="text-center space-y-2 pointer-events-none">
-                                {selectedFile ? (
-                                    <>
-                                        <Music className="w-8 h-8 mx-auto text-primary" />
-                                        <p className="font-mc-subheading text-sm text-primary truncate max-w-[200px]">
-                                            {selectedFile.name}
-                                        </p>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Upload className="w-8 h-8 mx-auto text-muted-foreground group-hover:text-primary transition-colors" />
-                                        <p className="font-mc-subheading text-sm text-muted-foreground">
-                                            Click or drag to upload audio
-                                        </p>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Vocal Separation Toggle */}
-                        <div className="flex items-center space-x-2 bg-secondary/10 p-3 rounded-lg border-2 border-border/20">
-                            <input
-                                type="checkbox"
-                                id="separate-vocals"
-                                checked={separateVocals}
-                                onChange={(e) => setSeparateVocals(e.target.checked)}
-                                disabled={isProcessing}
-                                className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
-                            />
-                            <label htmlFor="separate-vocals" className="text-sm font-mc-subheading cursor-pointer select-none flex-1">
-                                Separate Vocals (Recommended for songs)
-                                <span className="block text-xs text-muted-foreground font-sans mt-0.5">
-                                    Uncheck for acapellas or to save API costs.
-                                </span>
-                            </label>
-                        </div>
-                    </div>
+            {/* Right Column: Stage (8/12) */}
+            <div className="lg:col-span-8 bg-[#101010] relative min-h-[400px] flex flex-col">
+                
+                {/* Visualizer Area */}
+                <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-[url('/images/free-minecraft-sky-background-edit-online-1.jpg')] bg-cover bg-bottom">
+                    <div className="absolute inset-0 bg-black/20" />
                     
-                    <Button type="submit" disabled={isProcessing || !selectedFile} size="lg" className="text-lg h-32 w-full sm:w-auto px-8">
-                      {isProcessing ? (
-                        <div className="flex flex-col items-center">
-                          <Loader2 className="h-6 w-6 animate-spin mb-2" />
-                          <span className="text-xs text-center max-w-[100px] leading-tight">
-                            {statusMessage || "Processing..."}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center">
-                          <Wand2 className="h-6 w-6 mb-2" />
-                          <span>Villager-ify</span>
-                        </div>
-                      )}
-                    </Button>
-                  </div>
-                  {error && (
-                    <div className="bg-destructive/10 border-2 border-destructive text-destructive p-4 font-mc-subheading text-sm">
-                      ⚠️ {error}
-                    </div>
-                  )}
-                </form>
-              </CardContent>
-            </Card>
-
-            {/* Villager Display Area */}
-            <Card className="border-4 border-border/50">
-              <CardContent className="pt-12 pb-12">
-                <div className="flex flex-col items-center justify-center min-h-[400px]">
-                  {isProcessing ? (
-                    <div className="w-full max-w-md space-y-6">
-                      {/* Meme Slideshow Area */}
-                      <div className="relative w-full aspect-video bg-black/5 rounded-lg border-4 border-border overflow-hidden flex items-center justify-center">
-                        {memeImages.length > 0 && currentMeme ? (
-                            <div 
-                                className={`relative w-full h-full transition-opacity duration-500 ease-in-out ${
-                                    fadeState === 'in' ? 'opacity-100' : 'opacity-0'
-                                }`}
-                            >
-                                <Image 
-                                    src={currentMeme} 
-                                    alt="Loading meme" 
-                                    fill
-                                    className="object-contain p-4"
-                                />
+                    {/* Progress Overlay */}
+                    {isProcessing && (
+                         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm p-8">
+                            <div className="w-full max-w-sm space-y-4">
+                                {/* Meme Frame */}
+                                <div className="aspect-video bg-[#c6c6c6] border-4 border-white p-1 shadow-2xl relative">
+                                    <div className="w-full h-full bg-black flex items-center justify-center overflow-hidden relative">
+                                        {currentMeme ? (
+                                            <Image 
+                                                src={currentMeme} 
+                                                alt="Meme" 
+                                                fill 
+                                                className={`object-contain transition-opacity duration-500 ${fadeState === 'in' ? 'opacity-100' : 'opacity-0'}`} 
+                                            />
+                                        ) : (
+                                            <Loader2 className="w-8 h-8 text-white animate-spin" />
+                                        )}
+                                    </div>
+                                </div>
+                                {/* Bar */}
+                                <div className="space-y-1">
+                                    <div className="h-4 w-full bg-[#373737] border-2 border-white relative">
+                                        <div className="h-full bg-mc-green transition-all duration-300 ease-out" style={{ width: `${progress}%` }} />
+                                    </div>
+                                    <p className="text-center text-white text-xs font-mc-subheading animate-pulse">{Math.round(progress)}%</p>
+                                </div>
                             </div>
-                        ) : (
-                            <div className="text-center p-8">
-                                <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-                                <p className="text-muted-foreground font-mc-subheading">Loading funnies...</p>
-                            </div>
-                        )}
-                      </div>
+                         </div>
+                    )}
 
-                      {/* Progress Bar & Status */}
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-xs font-mc-subheading text-muted-foreground px-1">
-                            <span>{statusMessage}</span>
-                            <span>{Math.round(progress)}%</span>
-                        </div>
-                        <div className="h-4 w-full bg-secondary/20 border-2 border-border relative overflow-hidden">
-                            {/* Green Progress Bar */}
-                            <div 
-                                className="h-full bg-mc-green transition-all duration-75 ease-linear shadow-[inset_0_-2px_0_rgba(0,0,0,0.2)]"
-                                style={{ width: `${progress}%` }}
-                            />
-                            {/* Minecraft-style progress bar highlight */}
-                            <div 
-                                className="absolute top-0 left-0 w-full h-[2px] bg-white/30"
-                            />
-                        </div>
-                      </div>
+                    {/* Main Actor */}
+                    <div className="relative z-10 w-full h-full p-8 flex items-end justify-center pb-0">
+                        <VillagerDancer isPlaying={isPlaying} className="w-full max-w-[400px] aspect-square" />
                     </div>
-                  ) : (
-                    <>
-                      <div className="mb-8">
-                         <VillagerDancer isPlaying={isPlaying} className="scale-125" />
-                      </div>
-                      
-                      {audioUrl && (
-                        <div className="w-full max-w-md p-4 bg-card border-2 border-border shadow-[4px_4px_0_rgba(0,0,0,0.05)]">
-                          <audio
-                            controls
-                            src={audioUrl}
-                            className="w-full"
-                            onPlay={() => setIsPlaying(true)}
-                            onPause={() => setIsPlaying(false)}
-                            onEnded={() => setIsPlaying(false)}
-                          />
-                        </div>
-                      )}
-                      {!audioUrl && !isProcessing && (
-                        <p className="text-muted-foreground text-center font-mc-subheading opacity-50">
-                          Waiting for your mixtape...
-                        </p>
-                      )}
-                    </>
-                  )}
                 </div>
-              </CardContent>
-            </Card>
 
-          </div>
+                {/* Audio Controls Bar (Jukebox Style) */}
+                <div className="h-20 bg-[#3a2618] border-t-4 border-[#563823] flex items-center px-6 gap-4 relative">
+                    {/* Custom Audio Player */}
+                    {audioUrl ? (
+                         <>
+                            <audio 
+                                ref={audioRef}
+                                src={audioUrl}
+                                onPlay={() => setIsPlaying(true)}
+                                onPause={() => setIsPlaying(false)}
+                                onEnded={() => setIsPlaying(false)}
+                                className="hidden"
+                            />
+                            <Button 
+                                onClick={togglePlayback}
+                                size="icon"
+                                className="h-12 w-12 rounded-full bg-[#c6c6c6] border-4 border-[#8b8b8b] hover:bg-white text-[#1e1e1e] hover:scale-105 active:scale-95 transition-all"
+                            >
+                                {isPlaying ? <Pause className="fill-current" /> : <Play className="fill-current ml-1" />}
+                            </Button>
+                            
+                            <div className="flex-1 bg-[#1e1e1e] h-10 border-2 border-[#563823] rounded p-2 flex items-center gap-2 overflow-hidden">
+                                <Music className="w-4 h-4 text-mc-green animate-bounce" />
+                                <span className="font-mc-subheading text-xs text-[#a0a0a0] truncate">
+                                    Now Playing: {selectedFile?.name.replace(/\.[^/.]+$/, "")} (Villager Mix)
+                                </span>
+                            </div>
+
+                            <a 
+                                href={audioUrl} 
+                                download={`villager-${selectedFile?.name || 'audio'}.wav`}
+                                className="h-10 px-4 bg-mc-green hover:bg-mc-darkGreen text-white font-mc-subheading text-xs flex items-center gap-2 border-b-4 border-black/20 rounded active:border-b-0 active:translate-y-1 transition-all"
+                            >
+                                Download
+                            </a>
+                         </>
+                    ) : (
+                        <div className="w-full flex items-center justify-center text-[#8b6546] font-mc-subheading text-sm opacity-50 gap-2">
+                             <Mic2 className="w-4 h-4" />
+                             <span>Jukebox Empty</span>
+                        </div>
+                    )}
+                </div>
+            </div>
+
         </div>
       </div>
     </main>

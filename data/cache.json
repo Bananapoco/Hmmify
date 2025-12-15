@@ -1,0 +1,38 @@
+{
+  "upload:8aea695ed8740f7806fe4b7857ed8c76": {
+    "timestamp": 1765823327093,
+    "data": "upload-8aea695ed8740f7806fe4b7857ed8c76-revenge___a_minecraft_parody_of_usher_s_dj_got_us_fallin__in_love__music_video_.mp3",
+    "files": [
+      "upload-8aea695ed8740f7806fe4b7857ed8c76-revenge___a_minecraft_parody_of_usher_s_dj_got_us_fallin__in_love__music_video_.mp3"
+    ]
+  },
+  "separate:upload-8aea695ed8740f7806fe4b7857ed8c76-revenge___a_minecraft_parody_of_usher_s_dj_got_us_fallin__in_love__music_video_.mp3": {
+    "timestamp": 1765823376871,
+    "data": {
+      "vocalsUrl": "/api/audio?file=vocals-1765823374784-upload-8aea695ed8740f7806fe4b7857ed8c76-revenge___a_minecraft_parody_of_usher_s_dj_got_us_fallin__in_love__music_video_.wav",
+      "instrumentalUrl": {
+        "type": "multi",
+        "stems": [
+          "/api/audio?file=drums-1765823374784-upload-8aea695ed8740f7806fe4b7857ed8c76-revenge___a_minecraft_parody_of_usher_s_dj_got_us_fallin__in_love__music_video_.wav",
+          "/api/audio?file=bass-1765823374784-upload-8aea695ed8740f7806fe4b7857ed8c76-revenge___a_minecraft_parody_of_usher_s_dj_got_us_fallin__in_love__music_video_.wav",
+          "/api/audio?file=other-1765823374784-upload-8aea695ed8740f7806fe4b7857ed8c76-revenge___a_minecraft_parody_of_usher_s_dj_got_us_fallin__in_love__music_video_.wav"
+        ]
+      }
+    },
+    "files": [
+      "vocals-1765823374784-upload-8aea695ed8740f7806fe4b7857ed8c76-revenge___a_minecraft_parody_of_usher_s_dj_got_us_fallin__in_love__music_video_.wav",
+      "drums-1765823374784-upload-8aea695ed8740f7806fe4b7857ed8c76-revenge___a_minecraft_parody_of_usher_s_dj_got_us_fallin__in_love__music_video_.wav",
+      "other-1765823374784-upload-8aea695ed8740f7806fe4b7857ed8c76-revenge___a_minecraft_parody_of_usher_s_dj_got_us_fallin__in_love__music_video_.wav",
+      "bass-1765823374784-upload-8aea695ed8740f7806fe4b7857ed8c76-revenge___a_minecraft_parody_of_usher_s_dj_got_us_fallin__in_love__music_video_.wav"
+    ]
+  },
+  "convert:vocals-1765823374784-upload-8aea695ed8740f7806fe4b7857ed8c76-revenge___a_minecraft_parody_of_usher_s_dj_got_us_fallin__in_love__music_video_.wav": {
+    "timestamp": 1765823415921,
+    "data": {
+      "villagerUrl": "/api/audio?file=villager-1765823414802.wav"
+    },
+    "files": [
+      "villager-1765823414802.wav"
+    ]
+  }
+}
