@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +22,6 @@ export default function Home() {
   // Meme Loading State
   const [memeImages, setMemeImages] = useState<string[]>([]);
   const [currentMeme, setCurrentMeme] = useState<string | null>(null);
-  const [nextMeme, setNextMeme] = useState<string | null>(null);
   const [fadeState, setFadeState] = useState<'in' | 'out'>('in');
   
   // Progress State
@@ -30,7 +29,7 @@ export default function Home() {
   const [targetProgress, setTargetProgress] = useState(0);
   
   // Refs for slideshow management
-  const slideshowInterval = useRef<NodeJS.Timeout | null>(null);
+  const slideshowTimerRef = useRef<NodeJS.Timeout | null>(null);
   const shuffledMemesRef = useRef<string[]>([]);
   const memeIndexRef = useRef(0);
 
@@ -42,12 +41,11 @@ export default function Home() {
         setProgress((prev) => {
             const diff = targetProgress - prev;
             if (diff <= 0.5) return targetProgress; // Snap to target if close
-            // Move 1% or 5% of the remaining distance, whichever is larger, but cap speed
-            // This creates a deceleration effect
-            const step = Math.max(0.2, diff * 0.05); 
+            // Decelerate as we get closer
+            const step = Math.max(0.5, diff * 0.1); 
             return Math.min(prev + step, targetProgress);
         });
-    }, 50);
+    }, 100); // 10fps is sufficient for progress bar
 
     return () => clearInterval(interval);
   }, [isProcessing, targetProgress, progress]);
@@ -68,45 +66,30 @@ export default function Home() {
     fetchMemes();
   }, []);
 
-  const shuffleArray = (array: string[]) => {
+  const shuffleArray = useCallback((array: string[]) => {
     const newArray = [...array];
     for (let i = newArray.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
     }
     return newArray;
-  };
+  }, []);
 
-  const startMemeSlideshow = () => {
-    if (memeImages.length === 0) return;
+  const nextMemeSlide = useCallback(() => {
+    // 1. Start fade out
+    setFadeState('out');
 
-    // Initial shuffle
-    shuffledMemesRef.current = shuffleArray(memeImages);
-    memeIndexRef.current = 0;
-    
-    // Set initial meme
-    setCurrentMeme(shuffledMemesRef.current[0]);
-    setNextMeme(null);
-    setFadeState('in');
-
-    // Start interval
-    slideshowInterval.current = setInterval(() => {
-      // 1. Start fade out
-      setFadeState('out');
-
-      setTimeout(() => {
-        // 2. Prepare next meme after fade out
+    // 2. Change image after fade out
+    slideshowTimerRef.current = setTimeout(() => {
         let nextIndex = memeIndexRef.current + 1;
         
         // If we reached the end, reshuffle and start over
         if (nextIndex >= shuffledMemesRef.current.length) {
-            // Ensure the first item of the new shuffle isn't the same as the last item of the old shuffle
             const lastMeme = shuffledMemesRef.current[shuffledMemesRef.current.length - 1];
             let newShuffle = shuffleArray(memeImages);
             
-            // Simple check to avoid immediate repeat if possible (and if we have more than 1 meme)
+            // Avoid immediate repeat
             if (memeImages.length > 1 && newShuffle[0] === lastMeme) {
-                // Swap first with second
                 [newShuffle[0], newShuffle[1]] = [newShuffle[1], newShuffle[0]];
             }
             
@@ -119,17 +102,37 @@ export default function Home() {
         
         // 3. Start fade in
         setFadeState('in');
-      }, 500); // Wait for fade out to complete (0.5s)
 
-    }, 5000); // Change meme every 5 seconds
-  };
+        // Schedule next slide
+        slideshowTimerRef.current = setTimeout(nextMemeSlide, 5000);
+    }, 500); // Wait for fade out
+  }, [memeImages, shuffleArray]);
 
-  const stopMemeSlideshow = () => {
-    if (slideshowInterval.current) {
-      clearInterval(slideshowInterval.current);
-      slideshowInterval.current = null;
+  const startMemeSlideshow = useCallback(() => {
+    if (memeImages.length === 0) return;
+    if (slideshowTimerRef.current) clearTimeout(slideshowTimerRef.current);
+
+    shuffledMemesRef.current = shuffleArray(memeImages);
+    memeIndexRef.current = 0;
+    
+    setCurrentMeme(shuffledMemesRef.current[0]);
+    setFadeState('in');
+
+    // Start loop
+    slideshowTimerRef.current = setTimeout(nextMemeSlide, 5000);
+  }, [memeImages, nextMemeSlide, shuffleArray]);
+
+  const stopMemeSlideshow = useCallback(() => {
+    if (slideshowTimerRef.current) {
+      clearTimeout(slideshowTimerRef.current);
+      slideshowTimerRef.current = null;
     }
-  };
+  }, []);
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => stopMemeSlideshow();
+  }, [stopMemeSlideshow]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -162,7 +165,6 @@ export default function Home() {
     setProgress(0);
     setTargetProgress(0);
     
-    // Start Meme Slideshow
     startMemeSlideshow();
 
     try {
@@ -170,7 +172,7 @@ export default function Home() {
       formData.append("audio", selectedFile);
 
       // 1. Upload Audio
-      setTargetProgress(30); // Aim for 30% during upload
+      setTargetProgress(30); 
       setStatusMessage("Uploading audio...");
       const uploadResponse = await fetch("/api/upload-audio", {
         method: "POST",
@@ -178,19 +180,20 @@ export default function Home() {
       });
 
       if (!uploadResponse.ok) {
-        throw new Error("Failed to upload audio");
+        const errData = await uploadResponse.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to upload audio");
       }
 
       // Ensure we hit at least 30% after upload finishes
       setProgress((prev) => Math.max(prev, 30));
 
       const uploadData = await uploadResponse.json();
-      let processingUrl = uploadData.audioUrl; // Default to uploaded file
+      let processingUrl = uploadData.audioUrl; 
       let instrumentalUrl: string | { type: string; stems: string[] } | null = null;
       
       // 2. Separate Vocals (Optional)
       if (separateVocals) {
-        setTargetProgress(60); // Aim for 60% during separation
+        setTargetProgress(60); 
         setStatusMessage("Phase 1: Extracting vocals (AI Separation)...");
         
         const separateResponse = await fetch("/api/separate-vocals", {
@@ -200,14 +203,13 @@ export default function Home() {
         });
 
         if (!separateResponse.ok) {
-            const errData = await separateResponse.json();
+            const errData = await separateResponse.json().catch(() => ({}));
             throw new Error(errData.error || "Failed to separate vocals");
         }
 
         const separateData = await separateResponse.json();
-        processingUrl = separateData.vocalsUrl; // Use vocals for next step
+        processingUrl = separateData.vocalsUrl; 
         
-        // Handle instrumentalUrl
         if (typeof separateData.instrumentalUrl === 'string') {
           try {
             const parsed = JSON.parse(separateData.instrumentalUrl);
@@ -219,15 +221,13 @@ export default function Home() {
           instrumentalUrl = separateData.instrumentalUrl;
         }
 
-        // Ensure we hit at least 60% after separation finishes
         setProgress((prev) => Math.max(prev, 60));
       } else {
-        // If skipped, jump progress
         setProgress((prev) => Math.max(prev, 60));
       }
       
       // 3. Convert to Villager (RVC)
-      setTargetProgress(90); // Aim for 90% during conversion
+      setTargetProgress(90); 
       setStatusMessage("Phase 2: Villager-ifying (RVC Model)...");
 
       const convertResponse = await fetch("/api/convert-to-villager", {
@@ -237,19 +237,18 @@ export default function Home() {
       });
 
       if (!convertResponse.ok) {
-        const errData = await convertResponse.json();
+        const errData = await convertResponse.json().catch(() => ({}));
         throw new Error(errData.error || "Failed to convert to villager voice");
       }
 
       const convertData = await convertResponse.json();
       const villagerVocalsUrl = convertData.villagerUrl;
       
-      // Ensure we hit at least 90%
       setProgress((prev) => Math.max(prev, 90));
 
-      // 4. Combine villager vocals with instrumental (if vocal separation was used)
+      // 4. Combine villager vocals with instrumental
       if (separateVocals && instrumentalUrl) {
-        setTargetProgress(98); // Almost done
+        setTargetProgress(98);
         setStatusMessage("Phase 3: Mixing villager vocals with instrumental...");
         
         const combineResponse = await fetch("/api/combine-audio", {
@@ -262,14 +261,13 @@ export default function Home() {
         });
 
         if (!combineResponse.ok) {
-          const errData = await combineResponse.json();
+          const errData = await combineResponse.json().catch(() => ({}));
           throw new Error(errData.error || "Failed to combine audio");
         }
 
         const combineData = await combineResponse.json();
         setAudioUrl(combineData.combinedUrl);
       } else {
-        // No vocal separation, just play the villager-converted audio
         setAudioUrl(villagerVocalsUrl);
       }
       

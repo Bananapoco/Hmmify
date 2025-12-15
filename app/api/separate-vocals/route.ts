@@ -1,9 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import replicate from "@/lib/replicate";
-import fs from "fs";
+import fs from "fs/promises";
+import { createReadStream, createWriteStream } from "fs";
 import path from "path";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";
+import { getCache, setCache } from "@/lib/cache";
+
+// Define strict types for Replicate output
+interface DemucsOutput {
+  vocals?: ReadableStream | string | null;
+  drums?: ReadableStream | string | null;
+  bass?: ReadableStream | string | null;
+  other?: ReadableStream | string | null;
+  instrumental?: ReadableStream | string | null;
+}
+
+function extractFilenameFromUrl(url: string): string | null {
+    try {
+        const urlObj = new URL(url, 'http://localhost');
+        return urlObj.searchParams.get('file');
+    } catch {
+        return null;
+    }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,18 +33,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Filename is required" }, { status: 400 });
     }
 
+    // Check Cache
+    const cacheKey = `separate:${filename}`;
+    const cachedResult = await getCache(cacheKey);
+    
+    if (cachedResult) {
+        console.log(`Cache hit for separate-vocals: ${filename}`);
+        return NextResponse.json({
+            success: true,
+            ...cachedResult,
+            cached: true
+        });
+    }
+
     const tempDir = path.join(process.cwd(), "public", "temp");
     const filePath = path.join(tempDir, path.basename(filename));
     
-    if (!fs.existsSync(filePath)) {
-      return NextResponse.json({ error: "File not found on server" }, { status: 404 });
+    try {
+        await fs.access(filePath);
+    } catch {
+        return NextResponse.json({ error: "File not found on server" }, { status: 404 });
     }
 
     console.log(`Sending ${filename} to Replicate for vocal separation...`);
 
-    const fileBuffer = fs.readFileSync(filePath);
-    const fileBase64 = fileBuffer.toString('base64');
-    const dataUri = `data:audio/mp3;base64,${fileBase64}`;
+    const fileBuffer = await fs.readFile(filePath);
+    const mimeType = filename.endsWith('.mp3') ? 'audio/mpeg' : 'audio/wav';
+    const dataUri = `data:${mimeType};base64,${fileBuffer.toString('base64')}`;
 
     // Run Demucs
     const output = await replicate.run(
@@ -34,15 +69,9 @@ export async function POST(request: NextRequest) {
           audio: dataUri
         }
       }
-    ) as { 
-      vocals?: ReadableStream | string;
-      drums?: ReadableStream | string;
-      bass?: ReadableStream | string;
-      other?: ReadableStream | string;
-      instrumental?: ReadableStream | string;
-    };
+    ) as DemucsOutput;
 
-    console.log("Replicate output received:", Object.keys(output));
+    console.log("Replicate output received");
 
     if (!output || !output.vocals) {
         throw new Error("Replicate failed to return vocals");
@@ -50,6 +79,7 @@ export async function POST(request: NextRequest) {
 
     const timestamp = Date.now();
     const baseFilename = path.basename(filename, path.extname(filename));
+    const createdFiles: string[] = [];
 
     // Helper function to save stem
     const saveStem = async (stem: ReadableStream | string, stemName: string): Promise<string> => {
@@ -60,50 +90,59 @@ export async function POST(request: NextRequest) {
         console.log(`${stemName} returned as URL, downloading...`);
         const response = await fetch(stem);
         if (!response.ok) throw new Error(`Failed to fetch ${stemName} from Replicate URL`);
-        const buffer = Buffer.from(await response.arrayBuffer());
-        fs.writeFileSync(stemPath, buffer);
+        if (response.body) {
+            // @ts-ignore
+            const nodeStream = Readable.fromWeb(response.body); 
+            await pipeline(nodeStream, createWriteStream(stemPath));
+        } else {
+             throw new Error(`No body in response for ${stemName}`);
+        }
       } else {
         console.log(`${stemName} returned as Stream, saving to file...`);
-        const nodeStream = Readable.fromWeb(stem as any);
-        await pipeline(nodeStream, fs.createWriteStream(stemPath));
+        // @ts-ignore
+        const nodeStream = Readable.fromWeb(stem);
+        await pipeline(nodeStream, createWriteStream(stemPath));
       }
 
       console.log(`${stemName} saved to ${stemPath}`);
+      createdFiles.push(stemFilename);
       return `/api/audio?file=${stemFilename}`;
     };
 
     // Save vocals
-    const vocalsUrl = await saveStem(output.vocals, 'vocals');
+    const vocalsUrl = await saveStem(output.vocals!, 'vocals');
 
-    // Handle instrumental: prefer direct instrumental output, otherwise combine drums+bass+other
+    // Handle instrumental
     let instrumentalUrl: string | { type: string; stems: string[] };
     
     if (output.instrumental) {
-      // Direct instrumental output available
       instrumentalUrl = await saveStem(output.instrumental, 'instrumental');
     } else if (output.drums && output.bass && output.other) {
-      // Need to combine drums + bass + other
       console.log("Saving individual stems to combine into instrumental...");
-      const drumsUrl = await saveStem(output.drums, 'drums');
-      const bassUrl = await saveStem(output.bass, 'bass');
-      const otherUrl = await saveStem(output.other, 'other');
+      const [drumsUrl, bassUrl, otherUrl] = await Promise.all([
+          saveStem(output.drums!, 'drums'),
+          saveStem(output.bass!, 'bass'),
+          saveStem(output.other!, 'other')
+      ]);
       
-      // Return object with multiple stems - frontend will call combine-audio with these
       instrumentalUrl = { type: 'multi', stems: [drumsUrl, bassUrl, otherUrl] };
     } else {
-      // Fallback: use "other" stem if available (not ideal but better than nothing)
       if (output.other) {
         console.log("Using 'other' stem as instrumental (fallback)");
         instrumentalUrl = await saveStem(output.other, 'instrumental');
       } else {
-        throw new Error("Replicate did not return instrumental or required stems (drums, bass, other)");
+        throw new Error("Replicate did not return instrumental or required stems");
       }
     }
 
+    const result = { vocalsUrl, instrumentalUrl };
+    
+    // Save to cache
+    await setCache(cacheKey, result, createdFiles);
+
     return NextResponse.json({ 
       success: true, 
-      vocalsUrl,
-      instrumentalUrl
+      ...result
     });
 
   } catch (error: any) {
