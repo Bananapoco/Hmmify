@@ -5,27 +5,37 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { VillagerDancer } from "@/components/VillagerDancer";
-import { Loader2, Music } from "lucide-react";
+import { Loader2, Music, Upload } from "lucide-react";
 
 export default function Home() {
-  const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      // Basic validation
+      if (!file.type.startsWith("audio/")) {
+        setError("Please select a valid audio file (MP3, WAV, etc.)");
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        setError("File size too large (max 10MB)");
+        return;
+      }
+      setSelectedFile(file);
+      setError(null);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!youtubeUrl.trim()) {
-      setError("Please enter a YouTube URL");
-      return;
-    }
-
-    // Basic YouTube URL validation
-    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/;
-    if (!youtubeRegex.test(youtubeUrl)) {
-      setError("Please enter a valid YouTube URL");
+    if (!selectedFile) {
+      setError("Please select an audio file first");
       return;
     }
 
@@ -34,18 +44,18 @@ export default function Home() {
     setAudioUrl(null);
 
     try {
-      // Call API endpoint to process video
-      const response = await fetch("/api/process-video", {
+      const formData = new FormData();
+      formData.append("audio", selectedFile);
+
+      // Call API endpoint to upload audio
+      const response = await fetch("/api/upload-audio", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ youtubeUrl }),
+        body: formData,
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to process video");
+        throw new Error(errorData.error || "Failed to upload audio");
       }
 
       const data = await response.json();
@@ -60,7 +70,6 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[url('/dirt-texture.png')] bg-repeat bg-[#f0f0f0]">
-      {/* Texture overlay via CSS if image missing, essentially just a light noise or grid */}
       <div className="min-h-screen bg-background/95 relative">
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-4xl mx-auto">
@@ -70,7 +79,7 @@ export default function Home() {
                 Hmmify
               </h1>
               <p className="text-minecraft-splash text-xl font-mc-subheading pt-0">
-                Turn any YT vid into villageroke!
+                Turn any audio into villageroke!
               </p>
             </div>
 
@@ -78,31 +87,52 @@ export default function Home() {
             <Card className="mb-8 border-4 border-border/50">
               <CardHeader className="bg-secondary/10">
                 <CardDescription className="text-lg mt-0 text-center font-mc-subheading text-muted-foreground/80">
-                  Paste a link to any YouTube video and watch the magic happen
+                  Upload an MP3 or WAV file to convert into villager sounds
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-8">
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="flex gap-4 flex-col sm:flex-row">
-                    <Input
-                      type="url"
-                      placeholder="https://www.youtube.com/watch?v=..."
-                      value={youtubeUrl}
-                      onChange={(e) => setYoutubeUrl(e.target.value)}
-                      disabled={isProcessing}
-                      className="flex-1 text-lg h-14"
-                    />
-                    <Button type="submit" disabled={isProcessing} size="lg" className="text-lg">
+                  <div className="flex gap-4 flex-col sm:flex-row items-start">
+                    <div className="flex-1 w-full">
+                        <div className="relative flex items-center justify-center w-full h-32 border-2 border-dashed border-border/50 bg-secondary/5 hover:bg-secondary/10 transition-colors cursor-pointer group rounded-lg overflow-hidden">
+                            <Input
+                                type="file"
+                                accept="audio/*"
+                                onChange={handleFileChange}
+                                disabled={isProcessing}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                            />
+                            <div className="text-center space-y-2 pointer-events-none">
+                                {selectedFile ? (
+                                    <>
+                                        <Music className="w-8 h-8 mx-auto text-primary" />
+                                        <p className="font-mc-subheading text-sm text-primary truncate max-w-[200px]">
+                                            {selectedFile.name}
+                                        </p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Upload className="w-8 h-8 mx-auto text-muted-foreground group-hover:text-primary transition-colors" />
+                                        <p className="font-mc-subheading text-sm text-muted-foreground">
+                                            Click or drag to upload audio
+                                        </p>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <Button type="submit" disabled={isProcessing || !selectedFile} size="lg" className="text-lg h-32 w-full sm:w-auto px-8">
                       {isProcessing ? (
-                        <>
-                          <Loader2 className="mr-2 h-6 w-6 animate-spin" />
-                          Processing...
-                        </>
+                        <div className="flex flex-col items-center">
+                          <Loader2 className="h-6 w-6 animate-spin mb-2" />
+                          <span>Processing...</span>
+                        </div>
                       ) : (
-                        <>
-                          <Music className="mr-2 h-6 w-6" />
-                          Convert
-                        </>
+                        <div className="flex flex-col items-center">
+                          <Music className="h-6 w-6 mb-2" />
+                          <span>Convert</span>
+                        </div>
                       )}
                     </Button>
                   </div>
@@ -125,7 +155,7 @@ export default function Home() {
                          <Loader2 className="h-12 w-12 animate-spin text-primary" />
                       </div>
                       <p className="text-muted-foreground font-mc-subheading text-lg">
-                        Extracting audio... <br/>Converting to villager sounds...
+                        Processing audio... <br/>Converting to villager sounds...
                       </p>
                     </div>
                   ) : (
@@ -160,7 +190,7 @@ export default function Home() {
             {/* Info Section */}
             <div className="mt-12 text-center text-sm text-muted-foreground font-mc-subheading opacity-60">
               <p>
-                Made with ❤️ for laughs. Processing may take a minute or two.
+                Made with ❤️ for laughs.
               </p>
             </div>
           </div>
