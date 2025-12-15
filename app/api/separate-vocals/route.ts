@@ -34,44 +34,76 @@ export async function POST(request: NextRequest) {
           audio: dataUri
         }
       }
-    ) as { vocals?: ReadableStream | string };
+    ) as { 
+      vocals?: ReadableStream | string;
+      drums?: ReadableStream | string;
+      bass?: ReadableStream | string;
+      other?: ReadableStream | string;
+      instrumental?: ReadableStream | string;
+    };
 
-    console.log("Replicate output received.");
+    console.log("Replicate output received:", Object.keys(output));
 
     if (!output || !output.vocals) {
         throw new Error("Replicate failed to return vocals");
     }
 
-    // Handle the output
-    const vocalsOutput = output.vocals;
-    const vocalsFilename = `vocals-${Date.now()}-${path.basename(filename)}`;
-    const vocalsPath = path.join(tempDir, vocalsFilename);
+    const timestamp = Date.now();
+    const baseFilename = path.basename(filename, path.extname(filename));
 
-    if (typeof vocalsOutput === 'string') {
-        // If it's a URL string, download it
-        console.log("Vocals returned as URL, downloading...");
-        const response = await fetch(vocalsOutput);
-        if (!response.ok) throw new Error("Failed to fetch vocals from Replicate URL");
-        
+    // Helper function to save stem
+    const saveStem = async (stem: ReadableStream | string, stemName: string): Promise<string> => {
+      const stemFilename = `${stemName}-${timestamp}-${baseFilename}.wav`;
+      const stemPath = path.join(tempDir, stemFilename);
+
+      if (typeof stem === 'string') {
+        console.log(`${stemName} returned as URL, downloading...`);
+        const response = await fetch(stem);
+        if (!response.ok) throw new Error(`Failed to fetch ${stemName} from Replicate URL`);
         const buffer = Buffer.from(await response.arrayBuffer());
-        fs.writeFileSync(vocalsPath, buffer);
+        fs.writeFileSync(stemPath, buffer);
+      } else {
+        console.log(`${stemName} returned as Stream, saving to file...`);
+        const nodeStream = Readable.fromWeb(stem as any);
+        await pipeline(nodeStream, fs.createWriteStream(stemPath));
+      }
+
+      console.log(`${stemName} saved to ${stemPath}`);
+      return `/api/audio?file=${stemFilename}`;
+    };
+
+    // Save vocals
+    const vocalsUrl = await saveStem(output.vocals, 'vocals');
+
+    // Handle instrumental: prefer direct instrumental output, otherwise combine drums+bass+other
+    let instrumentalUrl: string | { type: string; stems: string[] };
+    
+    if (output.instrumental) {
+      // Direct instrumental output available
+      instrumentalUrl = await saveStem(output.instrumental, 'instrumental');
+    } else if (output.drums && output.bass && output.other) {
+      // Need to combine drums + bass + other
+      console.log("Saving individual stems to combine into instrumental...");
+      const drumsUrl = await saveStem(output.drums, 'drums');
+      const bassUrl = await saveStem(output.bass, 'bass');
+      const otherUrl = await saveStem(output.other, 'other');
+      
+      // Return object with multiple stems - frontend will call combine-audio with these
+      instrumentalUrl = { type: 'multi', stems: [drumsUrl, bassUrl, otherUrl] };
     } else {
-        // If it's a stream (Replicate SDK behavior)
-        console.log("Vocals returned as Stream, saving to file...");
-        // Convert web ReadableStream to Node stream if necessary, or just write it
-        // Replicate SDK returns a standard web ReadableStream usually
-        const nodeStream = Readable.fromWeb(vocalsOutput as any);
-        await pipeline(nodeStream, fs.createWriteStream(vocalsPath));
+      // Fallback: use "other" stem if available (not ideal but better than nothing)
+      if (output.other) {
+        console.log("Using 'other' stem as instrumental (fallback)");
+        instrumentalUrl = await saveStem(output.other, 'instrumental');
+      } else {
+        throw new Error("Replicate did not return instrumental or required stems (drums, bass, other)");
+      }
     }
-
-    console.log(`Vocals saved to ${vocalsPath}`);
-
-    // Return local URL
-    const localVocalsUrl = `/api/audio?file=${vocalsFilename}`;
 
     return NextResponse.json({ 
       success: true, 
-      vocalsUrl: localVocalsUrl 
+      vocalsUrl,
+      instrumentalUrl
     });
 
   } catch (error: any) {

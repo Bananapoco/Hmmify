@@ -63,6 +63,7 @@ export default function Home() {
 
       const uploadData = await uploadResponse.json();
       let processingUrl = uploadData.audioUrl; // Default to uploaded file
+      let instrumentalUrl: string | { type: string; stems: string[] } | null = null;
       
       // 2. Separate Vocals (Optional)
       if (separateVocals) {
@@ -81,6 +82,7 @@ export default function Home() {
 
         const separateData = await separateResponse.json();
         processingUrl = separateData.vocalsUrl; // Use vocals for next step
+        instrumentalUrl = separateData.instrumentalUrl; // Could be string or object with multiple stems
       }
 
       // 3. Convert to Villager (RVC)
@@ -98,9 +100,33 @@ export default function Home() {
       }
 
       const convertData = await convertResponse.json();
+      const villagerVocalsUrl = convertData.villagerUrl;
       
-      // 4. Play Final Result
-      setAudioUrl(convertData.villagerUrl);
+      // 4. Combine villager vocals with instrumental (if vocal separation was used)
+      if (separateVocals && instrumentalUrl) {
+        setStatusMessage("Phase 3: Mixing villager vocals with instrumental...");
+        
+        const combineResponse = await fetch("/api/combine-audio", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            vocalsUrl: villagerVocalsUrl,
+            instrumentalUrl: instrumentalUrl
+          }),
+        });
+
+        if (!combineResponse.ok) {
+          const errData = await combineResponse.json();
+          throw new Error(errData.error || "Failed to combine audio");
+        }
+
+        const combineData = await combineResponse.json();
+        setAudioUrl(combineData.combinedUrl);
+      } else {
+        // No vocal separation, just play the villager-converted audio
+        setAudioUrl(villagerVocalsUrl);
+      }
+      
       setIsPlaying(true);
       setStatusMessage("");
 
@@ -230,9 +256,6 @@ export default function Home() {
                       
                       {audioUrl && (
                         <div className="w-full max-w-md p-4 bg-card border-2 border-border shadow-[4px_4px_0_rgba(0,0,0,0.05)]">
-                          <p className="text-xs text-center mb-2 text-primary font-mc-subheading">
-                            ✨ Villager Mode Activated ✨
-                          </p>
                           <audio
                             controls
                             src={audioUrl}
