@@ -4,19 +4,20 @@ import { useEffect, useState, useRef } from "react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 
-type DanceMove = "idle" | "bob" | "spin" | "jump" | "wiggle";
+// Updated dance moves based on user request
+type DanceMove = "bounce" | "squash_stretch" | "spin_360" | "rock" | "gravity_flip";
 
-const danceMoves: DanceMove[] = ["idle", "bob", "spin", "jump", "wiggle"];
+const danceMoves: DanceMove[] = ["bounce", "squash_stretch", "spin_360", "rock", "gravity_flip"];
 
 interface VillagerDancerProps {
   isPlaying?: boolean;
+  hasMic?: boolean;
   className?: string;
 }
 
-export function VillagerDancer({ isPlaying = false, className }: VillagerDancerProps) {
+export function VillagerDancer({ isPlaying = false, hasMic = false, className }: VillagerDancerProps) {
   // Dancing state
-  const [currentMove, setCurrentMove] = useState<DanceMove>("idle");
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [currentMove, setCurrentMove] = useState<DanceMove>("bounce");
   
   // Wandering state
   const [positionX, setPositionX] = useState(0); // Percentage -40 to 40
@@ -33,7 +34,6 @@ export function VillagerDancer({ isPlaying = false, className }: VillagerDancerP
   // Dancing Logic
   useEffect(() => {
     if (!isPlaying) {
-      setCurrentMove("idle");
       return;
     }
 
@@ -48,22 +48,37 @@ export function VillagerDancer({ isPlaying = false, className }: VillagerDancerP
     setHopState(false);
 
     const changeMove = () => {
-      setIsAnimating(true);
       const randomMove = danceMoves[Math.floor(Math.random() * danceMoves.length)];
       setCurrentMove(randomMove);
-      
-      setTimeout(() => setIsAnimating(false), 2000);
     };
 
-    const interval = setInterval(changeMove, 2000 + Math.random() * 2000);
-    changeMove();
+    // Change moves every 2-4 seconds (Randomly)
+    // We clear the previous interval and set a new timeout to keep it chaotic
+    let timeoutId: NodeJS.Timeout;
+    
+    const loop = () => {
+        changeMove();
+        const nextTime = 2000 + Math.random() * 2000;
+        timeoutId = setTimeout(loop, nextTime);
+    };
+    
+    loop();
 
-    return () => clearInterval(interval);
+    return () => clearTimeout(timeoutId);
   }, [isPlaying]);
 
-  // Wandering Logic (when not playing)
+  // Wandering Logic (when not playing AND no mic)
   useEffect(() => {
-    if (isPlaying) return;
+    if (isPlaying || hasMic) {
+        // If has mic, ensure we are centered and not wandering
+        if (hasMic && !isPlaying) {
+            setPositionX(0);
+            currentPosRef.current = 0;
+            setIsWandering(false);
+            setHopState(false);
+        }
+        return;
+    }
 
     const moveVillager = (targetX: number, facingRight: boolean, duration: number) => {
       // Start movement
@@ -114,37 +129,45 @@ export function VillagerDancer({ isPlaying = false, className }: VillagerDancerP
       if (wanderTimeoutRef.current) clearTimeout(wanderTimeoutRef.current);
       if (hopIntervalRef.current) clearInterval(hopIntervalRef.current);
     };
-  }, [isPlaying]);
+  }, [isPlaying, hasMic]);
 
   return (
     <div className={cn("relative flex items-center justify-center w-full h-full", className)}>
       <div
         className={cn(
-          "relative transition-all ease-linear", // Use linear for X movement to avoid ease-in/out stopping the feel of walking
-          // Dance animations
-          isPlaying && currentMove === "bob" && isAnimating && "animate-bounce",
-          isPlaying && currentMove === "spin" && isAnimating && "animate-spin",
-          isPlaying && currentMove === "jump" && isAnimating && "animate-bounce scale-110"
+          "relative transition-all ease-linear",
+          // Tailwind / Custom animations applied to OUTER wrapper
+          isPlaying && currentMove === "bounce" && "animate-bounce",
+          isPlaying && currentMove === "spin_360" && "animate-spin",
+          isPlaying && currentMove === "squash_stretch" && "animate-squash" // Extreme squash
         )}
         style={{
-          // Main wrapper handles X position
+          // Main wrapper handles X position & Rotation based moves
           transform: `
-            translateX(${isPlaying ? 0 : positionX}%) 
-            ${isPlaying && currentMove === "wiggle" && isAnimating ? "rotate(-5deg)" : ""}
-            ${isPlaying && currentMove === "wiggle" && !isAnimating ? "rotate(5deg)" : ""}
+            translateX(${isPlaying || hasMic ? 0 : positionX}%) 
+            ${isPlaying && currentMove === "gravity_flip" ? "rotate(180deg)" : ""}
           `,
-          transitionDuration: isPlaying ? "0.5s" : `${moveDuration}ms`,
+          transitionDuration: isPlaying ? "0.3s" : `${moveDuration}ms`,
+          
+          // Rock animation is handled via class 'animate-rock' on INNER or OUTER?
+          // Let's put rock on INNER to separate it from spins if needed, 
+          // or just put it here if not spinning.
+          // Since rock is a rotation wiggle, let's add it to class list above if possible or style
+          ...(isPlaying && currentMove === "rock" ? { animation: "rock-motion 0.6s ease-in-out infinite" } : {})
         }}
       >
          {/* Inner wrapper handles Y-axis hopping independently + FLIPPING */}
          <div 
-            className="transition-transform duration-200 ease-in-out"
+            className={cn(
+                "transition-transform duration-200 ease-in-out",
+                // Rapid Flip Animation for Gravity Flip
+                isPlaying && currentMove === "gravity_flip" && "animate-rapid-flip"
+            )}
             style={{
-                // Apply ScaleX here so it's not affected by the long transition duration of the parent
                 transform: `
                     translateY(${!isPlaying && isWandering && hopState ? "-10px" : "0"}) 
                     scaleX(${!isPlaying && isFacingRight ? -1 : 1})
-                `
+                `,
             }}
          >
             <Image
@@ -152,11 +175,28 @@ export function VillagerDancer({ isPlaying = false, className }: VillagerDancerP
             alt="Minecraft Villager"
             width={256}
             height={256}
-            className="w-64 h-64 object-contain drop-shadow-lg"
+            className={cn(
+                "w-64 h-64 object-contain drop-shadow-lg",
+            )}
             priority
             />
         </div>
       </div>
+      
+      {/* Mic Stand - visible when hasMic is true */}
+      {hasMic && (
+          // Adjusted: flipped horizontally, scale 80%, moved upward (bottom-8 roughly translates to moving up from 0)
+          // right-[28%] to get it closer/next to center
+          <div className="absolute bottom-8 right-[28%] w-32 h-64 pointer-events-none z-20 transition-all duration-500"
+               style={{ transform: "scale(0.8) scaleX(-1)" }}>
+             <Image 
+                src="/images/micstand.png" 
+                alt="Mic Stand" 
+                fill
+                className="object-contain object-bottom"
+             />
+          </div>
+      )}
     </div>
   );
 }

@@ -357,7 +357,11 @@ export default function Home() {
 
                     {/* Main Actor */}
                     <div className="relative z-10 w-full h-full p-8 flex items-end justify-center pb-0">
-                        <VillagerDancer isPlaying={isPlaying} className="w-full max-w-[400px] aspect-square" />
+                        <VillagerDancer 
+                            isPlaying={isPlaying} 
+                            hasMic={!!audioUrl}
+                            className="w-full max-w-[400px] aspect-square" 
+                        />
                     </div>
                 </div>
 

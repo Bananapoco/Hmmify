@@ -81,6 +81,38 @@
     50% { transform: scale(1.05); }
   }
 
+  @keyframes rock-motion {
+    0%, 100% { transform: rotate(-15deg); }
+    50% { transform: rotate(15deg); }
+  }
+
+  /* Extreme Squash and Stretch - Cartoon Style */
+  @keyframes extreme-squash {
+    0%, 100% { transform: scale(1, 1); }
+    25% { transform: scale(1.5, 0.5) translateY(50px); } /* Wide and flat */
+    50% { transform: scale(0.6, 1.4) translateY(-50px); } /* Tall and thin */
+    75% { transform: scale(1.3, 0.7) translateY(20px); } /* Slightly wide */
+  }
+
+  /* Rapid Horizontal Flip */
+  @keyframes rapid-flip {
+      0% { transform: scaleX(1); }
+      50% { transform: scaleX(-1); }
+      100% { transform: scaleX(1); }
+  }
+
+  .animate-rock {
+    animation: rock-motion 1s ease-in-out infinite;
+  }
+
+  .animate-squash {
+      animation: extreme-squash 0.5s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+  }
+
+  .animate-rapid-flip {
+      animation: rapid-flip 0.2s steps(1, end) infinite;
+  }
+
   .text-minecraft-title {
     color: #cecece; /* Base light gray */
     text-shadow: 
