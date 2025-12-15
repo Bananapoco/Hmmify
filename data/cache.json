@@ -113,5 +113,19 @@
       "villagerUrl": "/api/audio?file=villager-1765832014566.wav"
     },
     "files": []
+  },
+  "convert:vocals-1765832285179.wav": {
+    "timestamp": 1765832308545,
+    "data": {
+      "villagerUrl": "/api/audio?file=villager-1765832306609.wav"
+    },
+    "files": []
+  },
+  "convert:vocals-1765832620570.wav": {
+    "timestamp": 1765832632957,
+    "data": {
+      "villagerUrl": "/api/audio?file=villager-1765832630855.wav"
+    },
+    "files": []
   }
 }
