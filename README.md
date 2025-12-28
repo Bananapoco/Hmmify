@@ -1,4 +1,4 @@
-A web app that lets you upload any mp3 and converts it into a Minecraft villager cover :)
+A web app that lets you upload any mp3 and converts it into a Minecraft villager cover.
 Won't work unless you have a Replicate API key, currently working on deploying this thing but need to consider how to handle server costs
 
 
