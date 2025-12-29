@@ -134,5 +134,26 @@
       "villagerUrl": "/api/audio?file=villager-1765833366151.wav"
     },
     "files": []
+  },
+  "convert:vocals-1765843470953.wav": {
+    "timestamp": 1765843497540,
+    "data": {
+      "villagerUrl": "/api/audio?file=villager-1765843496106.wav"
+    },
+    "files": []
+  },
+  "convert:vocals-1765845720929.wav": {
+    "timestamp": 1765845835910,
+    "data": {
+      "villagerUrl": "/api/audio?file=villager-1765845834908.wav"
+    },
+    "files": []
+  },
+  "convert:vocals-1767018427451.wav": {
+    "timestamp": 1767018441447,
+    "data": {
+      "villagerUrl": "/api/audio?file=villager-1767018440434.wav"
+    },
+    "files": []
   }
 }
