@@ -20,5 +20,4 @@ Node.js, Next.js API Routes (Serverless)
 **AI/Processing**  
 Replicate API (Demucs & RVC-v2), FFmpeg for audio merging
 
-**Deployment**  
-Vercel with GitHub CI/CD
+NOTE: Won't work without Replicate API Key. Currently working on Vercel deployment and fixing build errors.
