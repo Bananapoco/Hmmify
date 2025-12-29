@@ -1,10 +1,16 @@
-A web app that lets you upload any mp3 and converts it into a Minecraft villager cover.
-Won't work unless you have a Replicate API key, currently working on deploying this thing but need to consider how to handle server costs
+Hmmify: AI-Powered Minecraft Villager Vocal Transformer
 
+Web app that turns any audio track into a Minecraft villager "singing" cover, complete with fun dancing animations.
 
-## Tech Stack
-- **Frontend**: Next.js 14+ (App Router), TypeScript, Tailwind CSS, ShadCN UI
-- **Backend**: Next.js API Routes
-- **Audio Processing**: Replicate API for ML models
-- **Vocal Separation**: Replicate - Demucs by ryan5453
-- **Voice Conversion**: Replicate - rvc-v2 by psuedoram
+Key Features
+-AI Vocal Separation: Utilizes the Demucs model to isolate high-fidelity vocals from background instrumentals.
+-Voice Conversion Pipeline: Implements RVC-v2 (Retrieval-based Voice Conversion) to re-voice isolated vocals into the iconic Minecraft villager timbre.
+-Dynamic Visualizations: Features a React-based animation system that synchronizes character movement with audio playback
+-Intelligent Caching: Employs a custom-built file-based caching layer to minimize redundant API calls and optimize performance.
+
+Tech Stack:
+Frontend: Next.js 14, React, Tailwind CSS, Framer Motion
+Backend: Node.js, Next.js API Routes (Serverless)
+AI/Processing: Replicate API (Demucs & RVC-v2), FFmpeg for audio merging
+Deployment: Vercel with GitHub CI/CD
+
