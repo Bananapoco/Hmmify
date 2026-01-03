@@ -18,7 +18,7 @@ Next.js 14, React, Tailwind CSS, Framer Motion
 Node.js, Next.js API Routes (Serverless)
 
 **AI/Processing**  
-Replicate API (Demucs & RVC-v2), FFmpeg
+Replicate API, Demucs, RVC-v2, FFmpeg
 
 NOTE: Won't work without Replicate API Key. Currently working on fixing Vercel deployment errors.
 
