@@ -1,6 +1,6 @@
 # Hmmify: AI-Powered Minecraft Villager Vocal Transformer
 
-A fun web app that transforms any audio track into a Minecraft villager "singing" cover, complete with silly dancing animations.
+Web app that turns any audio into a Minecraft villager "singing" cover using Demucs vocal seperation and RVC 
 
 ## Key Features
 
