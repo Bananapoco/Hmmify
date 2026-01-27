@@ -7,7 +7,7 @@ Web app that turns any audio into a Minecraft villager "singing" cover using Dem
 - **AI Vocal Separation**: Utilizes the Demucs model to isolate high-fidelity vocals from background instrumentals.
 - **Voice Conversion Pipeline**: Implements RVC-v2 (Retrieval-based Voice Conversion) to re-voice isolated vocals into the iconic Minecraft villager timbre.
 - **Dynamic Visualizations**: Features a React-based animation system that synchronizes character movement with audio playback.
-- **Intelligent Caching**: Employs a custom-built file-based caching layer to minimize redundant API calls and optimize performance.
+- **Intelligent Caching**: file-based caching layer to minimize redundant API calls and optimize performance.
 
 ## Tech Stack
 
