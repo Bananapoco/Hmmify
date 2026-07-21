@@ -138,6 +138,18 @@ export default function Home() {
     setTargetProgress(0);
     startMemeSlideshow();
 
+    let conversionProgressTimer: ReturnType<typeof setTimeout> | null = null;
+    let conversionStillRunningTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const responseError = async (response: Response, fallback: string) => {
+      try {
+        const body = await response.json();
+        return body.error || fallback;
+      } catch {
+        return fallback;
+      }
+    };
+
     try {
       // Step 1: Read file as Base64 to bypass Vercel ephemeral storage issues
       setStatusMessage("Preparing audio...");
@@ -196,15 +208,49 @@ export default function Home() {
       
       setTargetProgress(90); 
       setStatusMessage("Villager-ifying...");
+      // RVC conversion is the slowest step and does not expose server-side progress.
+      // Continue the UI's progress during the wait without ever implying completion.
+      conversionProgressTimer = setTimeout(() => {
+        setTargetProgress(95);
+        setStatusMessage("Villager-ifying... this can take a minute");
+      }, 5_000);
+      conversionStillRunningTimer = setTimeout(() => {
+        setTargetProgress(97);
+        setStatusMessage("Still converting the voice...");
+      }, 30_000);
+
       const convertResponse = await fetch("/api/convert-to-villager", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ audioUrl: processingUrl }), // processingUrl is now a Replicate URL (remote)
       });
-      if (!convertResponse.ok) throw new Error("Conversion failed");
-      
+      if (!convertResponse.ok) throw new Error(await responseError(convertResponse, "Conversion failed"));
+
+      if (conversionProgressTimer) clearTimeout(conversionProgressTimer);
+      if (conversionStillRunningTimer) clearTimeout(conversionStillRunningTimer);
+
       const convertData = await convertResponse.json();
-      const villagerVocalsUrl = convertData.villagerUrl; // Replicate URL
+      let villagerVocalsUrl = convertData.villagerUrl as string | undefined;
+      const conversionDeadline = Date.now() + 15 * 60 * 1000;
+
+      while (!villagerVocalsUrl) {
+        if (Date.now() >= conversionDeadline) {
+          throw new Error("Villager conversion is taking longer than 15 minutes. Please try again later.");
+        }
+
+        setTargetProgress(97);
+        setStatusMessage("Waiting for the voice converter...");
+        await new Promise((resolve) => setTimeout(resolve, 2_000));
+
+        const statusParams = new URLSearchParams({ predictionId: convertData.predictionId });
+        if (convertData.cacheKey) statusParams.set("cacheKey", convertData.cacheKey);
+        const statusResponse = await fetch(`/api/convert-to-villager?${statusParams}`);
+        if (!statusResponse.ok) throw new Error(await responseError(statusResponse, "Conversion failed"));
+
+        const statusData = await statusResponse.json();
+        villagerVocalsUrl = statusData.villagerUrl;
+      }
+
       setProgress((prev) => Math.max(prev, 90));
 
       if (separateVocals && instrumentalUrl) {
@@ -215,7 +261,7 @@ export default function Home() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ vocalsUrl: villagerVocalsUrl, instrumentalUrl }),
         });
-        if (!combineResponse.ok) throw new Error("Mixing failed");
+        if (!combineResponse.ok) throw new Error(await responseError(combineResponse, "Mixing failed"));
         setAudioUrl((await combineResponse.json()).combinedUrl);
       } else {
         setAudioUrl(villagerVocalsUrl);
@@ -227,6 +273,8 @@ export default function Home() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
+      if (conversionProgressTimer) clearTimeout(conversionProgressTimer);
+      if (conversionStillRunningTimer) clearTimeout(conversionStillRunningTimer);
       setIsProcessing(false);
       stopMemeSlideshow();
     }

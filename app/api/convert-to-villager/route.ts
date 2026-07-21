@@ -1,13 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import replicate from "@/lib/replicate";
 import fs from "fs/promises";
-import { createWriteStream } from "fs";
 import path from "path";
-import { Readable } from "stream";
-import { pipeline } from "stream/promises";
 import { getCache, setCache } from "@/lib/cache";
 import crypto from "crypto";
 import { getTempDir } from "@/lib/path-utils";
+
+const RVC_VERSION = "d18e2e0a6a6d3af183cc09622cebba8555ec9a9e66983261fc64c8b1572b7dce";
+
+const rvcInput = (inputAudio: string) => ({
+  input_audio: inputAudio,
+  rvc_model: "CUSTOM",
+  custom_rvc_model_download_url: "https://huggingface.co/Fonre/RVC-Models/resolve/main/Villager%20(Minecraft)%20-%20Weights%20Model.zip?download=true",
+  pitch_change: 0,
+  index_rate: 0.5,
+  filter_radius: 3,
+  rms_mix_rate: 0.25,
+  protect: 0.33,
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -68,59 +78,18 @@ export async function POST(request: NextRequest) {
         console.log("Using remote URL directly for Replicate input");
     }
 
-    // Run RVC-v2
-    const output = await replicate.run(
-      "psuedoram/rvc-v2:d18e2e0a6a6d3af183cc09622cebba8555ec9a9e66983261fc64c8b1572b7dce",
-      {
-        input: {
-          input_audio: inputAudio,
-          rvc_model: "CUSTOM",
-          custom_rvc_model_download_url: "https://huggingface.co/Fonre/RVC-Models/resolve/main/Villager%20(Minecraft)%20-%20Weights%20Model.zip?download=true",
-          pitch_change: 0, 
-          index_rate: 0.5, 
-          filter_radius: 3,
-          rms_mix_rate: 0.25,
-          protect: 0.33
-        }
-      }
-    ) as ReadableStream | string;
+    // Create an asynchronous prediction instead of holding a Vercel request open.
+    // Public models can queue for several minutes even when the actual RVC work is fast.
+    const prediction = await replicate.predictions.create({
+      version: RVC_VERSION,
+      input: rvcInput(inputAudio),
+    });
 
-    console.log("Replicate RVC output received.");
-
-    let villagerUrl = "";
-
-    if (typeof output === 'string') {
-        // It's a URL (typical Replicate behavior)
-        // Return it directly!
-        villagerUrl = output;
-        console.log("Returning Replicate URL directly:", villagerUrl);
-    } else {
-        // It's a stream? Save to disk (fallback)
-        const tempDir = getTempDir();
-        // Ensure temp dir exists
-        try { await fs.access(tempDir); } catch { await fs.mkdir(tempDir, { recursive: true }); }
-
-        const timestamp = Date.now();
-        const villagerFilename = `villager-${timestamp}.wav`;
-        const villagerPath = path.join(tempDir, villagerFilename);
-        
-        // @ts-ignore
-        const nodeStream = Readable.fromWeb(output);
-        await pipeline(nodeStream, createWriteStream(villagerPath));
-        console.log(`Villager audio saved to ${villagerPath}`);
-        villagerUrl = `/api/audio?file=${villagerFilename}`;
-    }
-
-    const result = { villagerUrl };
-
-    // Save to Cache
-    if (cacheKey) {
-        await setCache(cacheKey, result, []);
-    }
-
-    return NextResponse.json({ 
-      success: true, 
-      ...result
+    return NextResponse.json({
+      success: true,
+      predictionId: prediction.id,
+      status: prediction.status,
+      cacheKey,
     });
 
   } catch (error: any) {
@@ -131,5 +100,43 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     );
+  }
+}
+
+export async function GET(request: NextRequest) {
+  const predictionId = request.nextUrl.searchParams.get("predictionId");
+  const cacheKey = request.nextUrl.searchParams.get("cacheKey") || "";
+
+  if (!predictionId || !/^[a-z0-9]+$/.test(predictionId)) {
+    return NextResponse.json({ error: "A valid predictionId is required" }, { status: 400 });
+  }
+
+  try {
+    const prediction = await replicate.predictions.get(predictionId);
+
+    if (prediction.status === "succeeded") {
+      if (typeof prediction.output !== "string") {
+        throw new Error("Replicate completed without an audio URL");
+      }
+
+      const result = { villagerUrl: prediction.output };
+      if (cacheKey.startsWith("convert:")) {
+        await setCache(cacheKey, result, []);
+      }
+
+      return NextResponse.json({ success: true, status: prediction.status, ...result });
+    }
+
+    if (prediction.status === "failed" || prediction.status === "canceled") {
+      return NextResponse.json(
+        { error: typeof prediction.error === "string" ? prediction.error : "Villager conversion failed", status: prediction.status },
+        { status: 502 }
+      );
+    }
+
+    return NextResponse.json({ success: true, status: prediction.status });
+  } catch (error: any) {
+    console.error("Error retrieving villager prediction:", error);
+    return NextResponse.json({ error: error.message || "Failed to retrieve villager conversion" }, { status: 500 });
   }
 }
