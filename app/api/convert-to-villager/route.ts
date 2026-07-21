@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import replicate from "@/lib/replicate";
+import replicate, { retryAfterRateLimit } from "@/lib/replicate";
 import fs from "fs/promises";
 import path from "path";
 import { getCache, setCache } from "@/lib/cache";
@@ -80,10 +80,10 @@ export async function POST(request: NextRequest) {
 
     // Create an asynchronous prediction instead of holding a Vercel request open.
     // Public models can queue for several minutes even when the actual RVC work is fast.
-    const prediction = await replicate.predictions.create({
+    const prediction = await retryAfterRateLimit(() => replicate.predictions.create({
       version: RVC_VERSION,
       input: rvcInput(inputAudio),
-    });
+    }));
 
     return NextResponse.json({
       success: true,

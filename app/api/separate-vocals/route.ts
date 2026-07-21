@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import replicate from "@/lib/replicate";
+import replicate, { retryAfterRateLimit } from "@/lib/replicate";
 import fs from "fs/promises";
 import { createWriteStream } from "fs";
 import path from "path";
@@ -68,14 +68,14 @@ export async function POST(request: NextRequest) {
     console.log(`Sending to Replicate for vocal separation...`);
 
     // Run Demucs
-    const output = await replicate.run(
+    const output = await retryAfterRateLimit(() => replicate.run(
       "ryan5453/demucs:5a7041cc9b82e5a558fea6b3d7b12dea89625e89da33f0447bd727c2d0ab9e77",
       {
         input: {
           audio: dataUri
         }
       }
-    ) as DemucsOutput;
+    )) as DemucsOutput;
 
     console.log("Replicate output received");
 
