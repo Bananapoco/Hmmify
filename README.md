@@ -11,9 +11,6 @@ A fun web app that transforms any audio track into a Minecraft villager "singing
 
 ## Tech Stack
 
-**Backend**  
-Node.js, Next.js API Routes (Serverless)
-
 **AI/Processing**  
 Replicate, RVC, Demucs, FFmpeg
 
