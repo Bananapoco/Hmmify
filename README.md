@@ -11,9 +11,6 @@ A fun web app that transforms any audio track into a Minecraft villager "singing
 
 ## Tech Stack
 
-**Frontend**  
-Next.js 14, React, Tailwind CSS, Framer Motion
-
 **Backend**  
 Node.js, Next.js API Routes (Serverless)
 
